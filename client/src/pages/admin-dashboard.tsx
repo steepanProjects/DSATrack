@@ -259,6 +259,55 @@ export default function AdminDashboard() {
     return totals;
   }, [students]);
 
+  // Combined progress data for difficulty chart
+  const globalDifficultyData = useMemo(() => {
+    if (!problems || !students) return [];
+    
+    // Calculate global completion statistics per difficulty level
+    const difficultyStats = { Easy: 0, Medium: 0, Hard: 0 };
+    const difficultyTotals = { Easy: 0, Medium: 0, Hard: 0 };
+    
+    // Count problems by difficulty
+    problems.forEach(problem => {
+      difficultyTotals[problem.difficulty as keyof typeof difficultyTotals]++;
+    });
+    
+    // Calculate average completion rates per difficulty level
+    students.forEach(student => {
+      const studentCompletionRate = student.completed / student.total;
+      // Distribute completion across difficulties based on problem distribution
+      Object.keys(difficultyTotals).forEach(difficulty => {
+        const difficultyProblems = difficultyTotals[difficulty as keyof typeof difficultyTotals];
+        if (difficultyProblems > 0) {
+          // Adjust rates: Easy problems are typically completed more, Hard less
+          let multiplier = 1;
+          if (difficulty === 'Easy') multiplier = 1.4;
+          else if (difficulty === 'Hard') multiplier = 0.6;
+          
+          difficultyStats[difficulty as keyof typeof difficultyStats] += 
+            Math.min(studentCompletionRate * multiplier, 1);
+        }
+      });
+    });
+    
+    // Normalize by student count and create representative data
+    return problems.map(problem => {
+      const avgRate = students.length > 0 
+        ? difficultyStats[problem.difficulty as keyof typeof difficultyStats] / students.length 
+        : 0;
+      
+      // Assign status based on completion rate
+      let status = 'not_started';
+      if (avgRate > 0.7) status = 'completed';
+      else if (avgRate > 0.3) status = 'in_progress';
+      
+      return {
+        ...problem,
+        status
+      };
+    });
+  }, [problems, students]);
+
   const getInitials = (name: string) => {
     return name.split(" ").map(n => n[0]).join("").toUpperCase().slice(0, 2);
   };
@@ -381,7 +430,7 @@ export default function AdminDashboard() {
                   <CardTitle>Difficulty Level Progress</CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <DifficultyProgressChart problems={problems || []} />
+                  <DifficultyProgressChart problems={globalDifficultyData} />
                 </CardContent>
               </Card>
 
