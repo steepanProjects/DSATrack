@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useLocation } from "wouter";
 import { useAuth } from "@/hooks/use-auth";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -34,14 +34,15 @@ export default function AuthPage() {
   const [activeTab, setActiveTab] = useState("student");
 
   // Redirect if already logged in
-  if (user) {
-    if (user.type === "admin") {
-      setLocation("/admin");
-    } else {
-      setLocation("/");
+  useEffect(() => {
+    if (user) {
+      if (user.type === "admin") {
+        setLocation("/admin");
+      } else {
+        setLocation("/");
+      }
     }
-    return null;
-  }
+  }, [user, setLocation]);
 
   const studentLoginForm = useForm({
     resolver: zodResolver(studentLoginSchema),
