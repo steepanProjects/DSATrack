@@ -98,21 +98,21 @@ export default function AuthPage() {
   };
 
   return (
-    <div className="min-h-screen flex">
-      {/* Left side - Forms */}
-      <div className="flex-1 flex items-center justify-center bg-slate-50 p-8">
-        <Card className="w-full max-w-md">
-          <CardHeader className="text-center">
-            <CardTitle className="text-3xl font-bold text-slate-800 mb-2">
+    <div className="min-h-screen flex bg-slate-50">
+      {/* Mobile-First Responsive Layout */}
+      <div className="flex-1 flex items-center justify-center p-4 sm:p-8">
+        <Card className="w-full max-w-md mx-auto">
+          <CardHeader className="text-center px-4 sm:px-6 pt-6 pb-4">
+            <CardTitle className="text-2xl sm:text-3xl font-bold text-slate-800 mb-2">
               DSA Progress Tracker
             </CardTitle>
-            <p className="text-slate-600">Track your Data Structures & Algorithms journey</p>
+            <p className="text-sm sm:text-base text-slate-600">Track your Data Structures & Algorithms journey</p>
           </CardHeader>
-          <CardContent>
+          <CardContent className="px-4 sm:px-6 pb-6">
             <Tabs value={activeTab} onValueChange={setActiveTab}>
-              <TabsList className="grid w-full grid-cols-2 mb-6">
-                <TabsTrigger value="student">Student</TabsTrigger>
-                <TabsTrigger value="admin">Admin</TabsTrigger>
+              <TabsList className="grid w-full grid-cols-2 mb-4 sm:mb-6 h-10">
+                <TabsTrigger value="student" className="text-sm">Student</TabsTrigger>
+                <TabsTrigger value="admin" className="text-sm">Admin</TabsTrigger>
               </TabsList>
 
               <TabsContent value="student" className="space-y-4">

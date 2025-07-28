@@ -42,31 +42,33 @@ export default function StudentDashboard() {
 
   return (
     <div className="min-h-screen bg-slate-50">
-      {/* Navigation Header */}
+      {/* Navigation Header - Mobile Responsive */}
       <nav className="bg-white shadow-sm border-b border-slate-200">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center h-16">
-            <div className="flex items-center space-x-4">
-              <h1 className="text-xl font-bold text-slate-800">DSA Progress Tracker</h1>
-              <span className="text-sm text-slate-500">|</span>
-              <span className="text-sm text-slate-600">{user.name}</span>
-              <Badge className="bg-primary/10 text-primary">{user.department}</Badge>
+        <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8">
+          <div className="flex justify-between items-center h-14 sm:h-16">
+            <div className="flex items-center space-x-2 sm:space-x-4 min-w-0 flex-1">
+              <h1 className="text-lg sm:text-xl font-bold text-slate-800 truncate">DSA Tracker</h1>
+              <span className="hidden sm:inline text-sm text-slate-500">|</span>
+              <div className="flex flex-col sm:flex-row sm:items-center sm:space-x-2 min-w-0">
+                <span className="text-xs sm:text-sm text-slate-600 truncate">{user.name}</span>
+                <Badge className="bg-primary/10 text-primary text-xs sm:text-sm mt-1 sm:mt-0">{user.department}</Badge>
+              </div>
             </div>
-            <div className="flex items-center space-x-4">
+            <div className="flex items-center space-x-2 sm:space-x-4">
               <Dialog open={showSettings} onOpenChange={setShowSettings}>
                 <DialogTrigger asChild>
-                  <Button variant="ghost" size="sm">
+                  <Button variant="ghost" size="sm" className="p-2">
                     <Settings className="h-4 w-4" />
                   </Button>
                 </DialogTrigger>
-                <DialogContent>
+                <DialogContent className="w-[95vw] max-w-md mx-auto">
                   <DialogHeader>
                     <DialogTitle>Student Settings</DialogTitle>
                   </DialogHeader>
                   <StudentSettings studentRegNo={user.reg_no} />
                 </DialogContent>
               </Dialog>
-              <Button variant="ghost" size="sm" onClick={handleLogout}>
+              <Button variant="ghost" size="sm" onClick={handleLogout} className="p-2">
                 <LogOut className="h-4 w-4" />
               </Button>
             </div>
@@ -75,70 +77,71 @@ export default function StudentDashboard() {
       </nav>
 
       {/* Main Content */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* Dashboard Stats */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+      <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 py-4 sm:py-8">
+        {/* Dashboard Stats - Mobile Responsive */}
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-6 mb-6 sm:mb-8">
           <Card>
-            <CardContent className="p-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-medium text-slate-600">Total Problems</p>
-                  <p className="text-3xl font-bold text-slate-800">{stats?.total || 0}</p>
+            <CardContent className="p-3 sm:p-6">
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between">
+                <div className="mb-2 sm:mb-0">
+                  <p className="text-xs sm:text-sm font-medium text-slate-600">Total</p>
+                  <p className="text-xl sm:text-3xl font-bold text-slate-800">{stats?.total || 0}</p>
                 </div>
-                <div className="bg-primary/10 p-3 rounded-lg">
-                  <Code className="text-primary h-6 w-6" />
+                <div className="bg-primary/10 p-2 sm:p-3 rounded-lg self-end sm:self-auto">
+                  <Code className="text-primary h-4 w-4 sm:h-6 sm:w-6" />
                 </div>
               </div>
             </CardContent>
           </Card>
           <Card>
-            <CardContent className="p-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-medium text-slate-600">Completed</p>
-                  <p className="text-3xl font-bold text-secondary">{stats?.completed || 0}</p>
+            <CardContent className="p-3 sm:p-6">
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between">
+                <div className="mb-2 sm:mb-0">
+                  <p className="text-xs sm:text-sm font-medium text-slate-600">Completed</p>
+                  <p className="text-xl sm:text-3xl font-bold text-green-600">{stats?.completed || 0}</p>
                 </div>
-                <div className="bg-secondary/10 p-3 rounded-lg">
-                  <CheckCircle className="text-secondary h-6 w-6" />
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardContent className="p-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-medium text-slate-600">In Progress</p>
-                  <p className="text-3xl font-bold text-accent">{stats?.in_progress || 0}</p>
-                </div>
-                <div className="bg-accent/10 p-3 rounded-lg">
-                  <Clock className="text-accent h-6 w-6" />
+                <div className="bg-green-100 p-2 sm:p-3 rounded-lg self-end sm:self-auto">
+                  <CheckCircle className="text-green-600 h-4 w-4 sm:h-6 sm:w-6" />
                 </div>
               </div>
             </CardContent>
           </Card>
           <Card>
-            <CardContent className="p-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-medium text-slate-600">Not Started</p>
-                  <p className="text-3xl font-bold text-danger">{stats?.not_started || 0}</p>
+            <CardContent className="p-3 sm:p-6">
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between">
+                <div className="mb-2 sm:mb-0">
+                  <p className="text-xs sm:text-sm font-medium text-slate-600">In Progress</p>
+                  <p className="text-xl sm:text-3xl font-bold text-yellow-600">{stats?.in_progress || 0}</p>
                 </div>
-                <div className="bg-danger/10 p-3 rounded-lg">
-                  <Circle className="text-danger h-6 w-6" />
+                <div className="bg-yellow-100 p-2 sm:p-3 rounded-lg self-end sm:self-auto">
+                  <Clock className="text-yellow-600 h-4 w-4 sm:h-6 sm:w-6" />
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="p-3 sm:p-6">
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between">
+                <div className="mb-2 sm:mb-0">
+                  <p className="text-xs sm:text-sm font-medium text-slate-600">Not Started</p>
+                  <p className="text-xl sm:text-3xl font-bold text-slate-600">{stats?.not_started || 0}</p>
+                </div>
+                <div className="bg-slate-100 p-2 sm:p-3 rounded-lg self-end sm:self-auto">
+                  <Circle className="text-slate-600 h-4 w-4 sm:h-6 sm:w-6" />
                 </div>
               </div>
             </CardContent>
           </Card>
         </div>
 
-        {/* Goals Section */}
-        <div className="mb-8">
-          <div className="flex justify-between items-center mb-4">
-            <h2 className="text-xl font-semibold text-slate-800">Learning Goals</h2>
+        {/* Goals Section - Mobile Responsive */}
+        <div className="mb-6 sm:mb-8">
+          <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center mb-4 gap-3">
+            <h2 className="text-lg sm:text-xl font-semibold text-slate-800">Learning Goals</h2>
             <Button 
               onClick={() => setShowGoalDialog(true)}
-              className="flex items-center gap-2 bg-primary hover:bg-primary/90"
+              className="flex items-center gap-2 bg-primary hover:bg-primary/90 w-full sm:w-auto justify-center sm:justify-start text-sm"
+              size="sm"
             >
               <Target className="h-4 w-4" />
               Set Goal
