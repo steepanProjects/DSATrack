@@ -98,41 +98,57 @@ export default function AuthPage() {
   };
 
   return (
-    <div className="min-h-screen flex bg-slate-50">
-      {/* Mobile-First Responsive Layout */}
-      <div className="flex-1 flex items-center justify-center p-4 sm:p-8">
-        <Card className="w-full max-w-md mx-auto">
-          <CardHeader className="text-center px-4 sm:px-6 pt-6 pb-4">
-            <CardTitle className="text-2xl sm:text-3xl font-bold text-slate-800 mb-2">
-              DSA Progress Tracker
+    <div className="min-h-screen flex flex-col lg:flex-row bg-slate-50">
+      {/* Mobile Hero Section - Only visible on mobile */}
+      <div className="lg:hidden bg-gradient-to-r from-blue-600 to-purple-600 p-6 text-white">
+        <div className="text-center">
+          <h1 className="text-2xl font-bold mb-2">DSA Progress Tracker</h1>
+          <p className="text-blue-100 text-sm">Master 455+ programming problems</p>
+        </div>
+      </div>
+
+      {/* Main Auth Section */}
+      <div className="flex-1 flex items-center justify-center p-4 sm:p-6 lg:p-8">
+        <Card className="w-full max-w-md mx-auto shadow-lg border-0 sm:border">
+          <CardHeader className="text-center px-4 sm:px-6 pt-4 pb-3 sm:pt-6 sm:pb-4">
+            <CardTitle className="text-xl sm:text-2xl lg:text-3xl font-bold text-slate-800 mb-1 sm:mb-2">
+              <span className="hidden lg:inline">DSA Progress Tracker</span>
+              <span className="lg:hidden">Welcome Back</span>
             </CardTitle>
-            <p className="text-sm sm:text-base text-slate-600">Track your Data Structures & Algorithms journey</p>
+            <p className="text-xs sm:text-sm lg:text-base text-slate-600">
+              <span className="hidden lg:inline">Track your Data Structures & Algorithms journey</span>
+              <span className="lg:hidden">Sign in to continue your progress</span>
+            </p>
           </CardHeader>
-          <CardContent className="px-4 sm:px-6 pb-6">
+          <CardContent className="px-4 sm:px-6 pb-4 sm:pb-6">
             <Tabs value={activeTab} onValueChange={setActiveTab}>
-              <TabsList className="grid w-full grid-cols-2 mb-4 sm:mb-6 h-10">
-                <TabsTrigger value="student" className="text-sm">Student</TabsTrigger>
-                <TabsTrigger value="admin" className="text-sm">Admin</TabsTrigger>
+              <TabsList className="grid w-full grid-cols-2 mb-3 sm:mb-4 lg:mb-6 h-9 sm:h-10">
+                <TabsTrigger value="student" className="text-xs sm:text-sm">Student</TabsTrigger>
+                <TabsTrigger value="admin" className="text-xs sm:text-sm">Admin</TabsTrigger>
               </TabsList>
 
-              <TabsContent value="student" className="space-y-4">
+              <TabsContent value="student" className="space-y-3 sm:space-y-4">
                 <Tabs defaultValue="login">
-                  <TabsList className="grid w-full grid-cols-2">
-                    <TabsTrigger value="login">Login</TabsTrigger>
-                    <TabsTrigger value="register">Register</TabsTrigger>
+                  <TabsList className="grid w-full grid-cols-2 h-8 sm:h-9">
+                    <TabsTrigger value="login" className="text-xs sm:text-sm">Login</TabsTrigger>
+                    <TabsTrigger value="register" className="text-xs sm:text-sm">Register</TabsTrigger>
                   </TabsList>
 
-                  <TabsContent value="login" className="mt-4">
+                  <TabsContent value="login" className="mt-3 sm:mt-4">
                     <Form {...studentLoginForm}>
-                      <form onSubmit={studentLoginForm.handleSubmit(onStudentLogin)} className="space-y-4">
+                      <form onSubmit={studentLoginForm.handleSubmit(onStudentLogin)} className="space-y-3 sm:space-y-4">
                         <FormField
                           control={studentLoginForm.control}
                           name="username"
                           render={({ field }) => (
                             <FormItem>
-                              <FormLabel>Registration Number</FormLabel>
+                              <FormLabel className="text-sm">Registration Number</FormLabel>
                               <FormControl>
-                                <Input placeholder="e.g., 711523BCS001" {...field} />
+                                <Input 
+                                  placeholder="e.g., 711523BCS001" 
+                                  {...field} 
+                                  className="h-10 sm:h-11 text-sm"
+                                />
                               </FormControl>
                               <FormMessage />
                             </FormItem>
@@ -143,9 +159,14 @@ export default function AuthPage() {
                           name="password"
                           render={({ field }) => (
                             <FormItem>
-                              <FormLabel>Password</FormLabel>
+                              <FormLabel className="text-sm">Password</FormLabel>
                               <FormControl>
-                                <Input type="password" placeholder="Enter your password" {...field} />
+                                <Input 
+                                  type="password" 
+                                  placeholder="Enter your password" 
+                                  {...field} 
+                                  className="h-10 sm:h-11 text-sm"
+                                />
                               </FormControl>
                               <FormMessage />
                             </FormItem>
@@ -153,7 +174,7 @@ export default function AuthPage() {
                         />
                         <Button 
                           type="submit" 
-                          className="w-full"
+                          className="w-full h-10 sm:h-11 text-sm sm:text-base mt-4 sm:mt-6"
                           disabled={loginMutation.isPending}
                         >
                           {loginMutation.isPending ? "Logging in..." : "Login as Student"}
@@ -162,17 +183,21 @@ export default function AuthPage() {
                     </Form>
                   </TabsContent>
 
-                  <TabsContent value="register" className="mt-4">
+                  <TabsContent value="register" className="mt-3 sm:mt-4">
                     <Form {...studentRegisterForm}>
-                      <form onSubmit={studentRegisterForm.handleSubmit(onStudentRegister)} className="space-y-4">
+                      <form onSubmit={studentRegisterForm.handleSubmit(onStudentRegister)} className="space-y-3 sm:space-y-4">
                         <FormField
                           control={studentRegisterForm.control}
                           name="reg_no"
                           render={({ field }) => (
                             <FormItem>
-                              <FormLabel>Registration Number</FormLabel>
+                              <FormLabel className="text-sm">Registration Number</FormLabel>
                               <FormControl>
-                                <Input placeholder="e.g., 711523BCS001" {...field} />
+                                <Input 
+                                  placeholder="e.g., 711523BCS001" 
+                                  {...field} 
+                                  className="h-10 sm:h-11 text-sm"
+                                />
                               </FormControl>
                               <FormMessage />
                             </FormItem>
@@ -183,9 +208,13 @@ export default function AuthPage() {
                           name="name"
                           render={({ field }) => (
                             <FormItem>
-                              <FormLabel>Full Name</FormLabel>
+                              <FormLabel className="text-sm">Full Name</FormLabel>
                               <FormControl>
-                                <Input placeholder="Enter your full name" {...field} />
+                                <Input 
+                                  placeholder="Enter your full name" 
+                                  {...field} 
+                                  className="h-10 sm:h-11 text-sm"
+                                />
                               </FormControl>
                               <FormMessage />
                             </FormItem>
@@ -196,9 +225,13 @@ export default function AuthPage() {
                           name="department"
                           render={({ field }) => (
                             <FormItem>
-                              <FormLabel>Department</FormLabel>
+                              <FormLabel className="text-sm">Department</FormLabel>
                               <FormControl>
-                                <Input placeholder="e.g., CSE, CSBS, AIML, AI&DS" {...field} />
+                                <Input 
+                                  placeholder="e.g., CSE, CSBS, AIML, AI&DS" 
+                                  {...field} 
+                                  className="h-10 sm:h-11 text-sm"
+                                />
                               </FormControl>
                               <FormMessage />
                             </FormItem>
@@ -209,9 +242,14 @@ export default function AuthPage() {
                           name="password"
                           render={({ field }) => (
                             <FormItem>
-                              <FormLabel>Password</FormLabel>
+                              <FormLabel className="text-sm">Password</FormLabel>
                               <FormControl>
-                                <Input type="password" placeholder="Enter your password" {...field} />
+                                <Input 
+                                  type="password" 
+                                  placeholder="Enter your password" 
+                                  {...field} 
+                                  className="h-10 sm:h-11 text-sm"
+                                />
                               </FormControl>
                               <FormMessage />
                             </FormItem>
@@ -219,7 +257,7 @@ export default function AuthPage() {
                         />
                         <Button 
                           type="submit" 
-                          className="w-full"
+                          className="w-full h-10 sm:h-11 text-sm sm:text-base mt-4 sm:mt-6"
                           disabled={registerMutation.isPending}
                         >
                           {registerMutation.isPending ? "Registering..." : "Register as Student"}
@@ -230,17 +268,21 @@ export default function AuthPage() {
                 </Tabs>
               </TabsContent>
 
-              <TabsContent value="admin">
+              <TabsContent value="admin" className="space-y-3 sm:space-y-4">
                 <Form {...adminLoginForm}>
-                  <form onSubmit={adminLoginForm.handleSubmit(onAdminLogin)} className="space-y-4">
+                  <form onSubmit={adminLoginForm.handleSubmit(onAdminLogin)} className="space-y-3 sm:space-y-4">
                     <FormField
                       control={adminLoginForm.control}
                       name="username"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>Username</FormLabel>
+                          <FormLabel className="text-sm">Username</FormLabel>
                           <FormControl>
-                            <Input placeholder="admin" {...field} />
+                            <Input 
+                              placeholder="admin" 
+                              {...field} 
+                              className="h-10 sm:h-11 text-sm"
+                            />
                           </FormControl>
                           <FormMessage />
                         </FormItem>
@@ -251,9 +293,14 @@ export default function AuthPage() {
                       name="password"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>Password</FormLabel>
+                          <FormLabel className="text-sm">Password</FormLabel>
                           <FormControl>
-                            <Input type="password" placeholder="Enter admin password" {...field} />
+                            <Input 
+                              type="password" 
+                              placeholder="Enter admin password" 
+                              {...field} 
+                              className="h-10 sm:h-11 text-sm"
+                            />
                           </FormControl>
                           <FormMessage />
                         </FormItem>
@@ -261,7 +308,7 @@ export default function AuthPage() {
                     />
                     <Button 
                       type="submit" 
-                      className="w-full bg-slate-800 hover:bg-slate-900"
+                      className="w-full h-10 sm:h-11 text-sm sm:text-base bg-slate-800 hover:bg-slate-900 mt-4 sm:mt-6"
                       disabled={loginMutation.isPending}
                     >
                       {loginMutation.isPending ? "Logging in..." : "Login as Admin"}
@@ -274,8 +321,8 @@ export default function AuthPage() {
         </Card>
       </div>
 
-      {/* Right side - Hero section */}
-      <div className="flex-1 bg-gradient-to-br from-primary/5 to-secondary/5 flex items-center justify-center p-8">
+      {/* Desktop Hero Section - Hidden on mobile */}
+      <div className="hidden lg:flex flex-1 bg-gradient-to-br from-blue-50 to-purple-50 items-center justify-center p-8">
         <div className="text-center max-w-md">
           <img 
             src="https://images.unsplash.com/photo-1522202176988-66273c2fd55f?ixlib=rb-4.0.3&ixid=MnwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8&auto=format&fit=crop&w=800&h=400" 
@@ -290,12 +337,12 @@ export default function AuthPage() {
             From basics to advanced topics, build your programming skills systematically.
           </p>
           <div className="grid grid-cols-2 gap-4 text-sm text-slate-600">
-            <div className="bg-white/50 p-3 rounded-lg">
-              <div className="font-semibold text-primary">455+</div>
+            <div className="bg-white/70 p-3 rounded-lg shadow-sm">
+              <div className="font-semibold text-blue-600">455+</div>
               <div>Problems</div>
             </div>
-            <div className="bg-white/50 p-3 rounded-lg">
-              <div className="font-semibold text-secondary">18</div>
+            <div className="bg-white/70 p-3 rounded-lg shadow-sm">
+              <div className="font-semibold text-purple-600">18</div>
               <div>Categories</div>
             </div>
           </div>
