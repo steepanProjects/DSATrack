@@ -358,6 +358,64 @@ export class DatabaseStorage implements IStorage {
     return studentsWithProgress;
   }
 
+  async getGlobalDifficultyProgress(): Promise<any[]> {
+    // Get all problems grouped by difficulty
+    const problemsByDifficulty = await db
+      .select({
+        difficulty: problems.difficulty,
+        problem_id: problems.id,
+        title: problems.title,
+        category: problems.category
+      })
+      .from(problems);
+
+    // Get all student progress
+    const allProgress = await db
+      .select({
+        problem_id: student_progress.problem_id,
+        status: student_progress.status,
+        difficulty: problems.difficulty
+      })
+      .from(student_progress)
+      .leftJoin(problems, eq(student_progress.problem_id, problems.id));
+
+    // Get total number of students
+    const totalStudents = await db.select({ count: count() }).from(students);
+    const studentCount = totalStudents[0].count;
+
+    // Calculate statistics for each difficulty level
+    const difficultyStats = problemsByDifficulty.reduce((acc, problem) => {
+      const difficulty = problem.difficulty;
+      if (!acc[difficulty]) {
+        acc[difficulty] = {
+          difficulty,
+          total_problems: 0,
+          completed_by_students: 0,
+          in_progress_by_students: 0,
+          not_started_by_students: 0,
+          total_student_attempts: 0
+        };
+      }
+      
+      acc[difficulty].total_problems++;
+      
+      // Count how many students have attempted this problem
+      const problemProgress = allProgress.filter(p => p.problem_id === problem.problem_id);
+      const completed = problemProgress.filter(p => p.status === 'completed').length;
+      const inProgress = problemProgress.filter(p => p.status === 'in_progress').length;
+      const notStarted = studentCount - completed - inProgress;
+      
+      acc[difficulty].completed_by_students += completed;
+      acc[difficulty].in_progress_by_students += inProgress;
+      acc[difficulty].not_started_by_students += notStarted;
+      acc[difficulty].total_student_attempts += studentCount;
+      
+      return acc;
+    }, {} as Record<string, any>);
+
+    return Object.values(difficultyStats);
+  }
+
   async getStudentNotes(reg_no: string, problem_id: number): Promise<StudentNotes | undefined> {
     const [note] = await db
       .select()

@@ -344,7 +344,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           const [reg_no, problem_id, status] = row.split(',').map(field => field.trim().replace(/"/g, ''));
           if (reg_no && problem_id && status) {
             try {
-              await storage.updateStudentProgress(reg_no, parseInt(problem_id), status as any);
+              await storage.updateProgress(reg_no, parseInt(problem_id), status as any);
               importedCount++;
             } catch (error) {
               // Progress update failed, skip
@@ -356,6 +356,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json({ message: `Successfully imported ${importedCount} progress records` });
     } catch (error) {
       res.status(500).json({ message: "Failed to import progress data" });
+    }
+  });
+
+  app.get("/api/admin/analytics/difficulty-progress", async (req, res) => {
+    if (!req.isAuthenticated() || (req.user as any)?.type !== 'admin') {
+      return res.status(401).json({ message: "Admin access required" });
+    }
+
+    try {
+      const difficultyProgress = await storage.getGlobalDifficultyProgress();
+      res.json(difficultyProgress);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch difficulty progress" });
     }
   });
 

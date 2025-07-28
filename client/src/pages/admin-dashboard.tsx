@@ -71,6 +71,10 @@ export default function AdminDashboard() {
     queryKey: ["/api/problems"],
   });
 
+  const { data: realDifficultyProgress } = useQuery<any[]>({
+    queryKey: ["/api/admin/analytics/difficulty-progress"],
+  });
+
   const { data: studentDetails } = useQuery<any[]>({
     queryKey: ["/api/student", selectedStudent, "progress"],
     enabled: !!selectedStudent,
@@ -259,54 +263,7 @@ export default function AdminDashboard() {
     return totals;
   }, [students]);
 
-  // Combined progress data for difficulty chart
-  const globalDifficultyData = useMemo(() => {
-    if (!problems || !students) return [];
-    
-    // Calculate global completion statistics per difficulty level
-    const difficultyStats = { Easy: 0, Medium: 0, Hard: 0 };
-    const difficultyTotals = { Easy: 0, Medium: 0, Hard: 0 };
-    
-    // Count problems by difficulty
-    problems.forEach(problem => {
-      difficultyTotals[problem.difficulty as keyof typeof difficultyTotals]++;
-    });
-    
-    // Calculate average completion rates per difficulty level
-    students.forEach(student => {
-      const studentCompletionRate = student.completed / student.total;
-      // Distribute completion across difficulties based on problem distribution
-      Object.keys(difficultyTotals).forEach(difficulty => {
-        const difficultyProblems = difficultyTotals[difficulty as keyof typeof difficultyTotals];
-        if (difficultyProblems > 0) {
-          // Adjust rates: Easy problems are typically completed more, Hard less
-          let multiplier = 1;
-          if (difficulty === 'Easy') multiplier = 1.4;
-          else if (difficulty === 'Hard') multiplier = 0.6;
-          
-          difficultyStats[difficulty as keyof typeof difficultyStats] += 
-            Math.min(studentCompletionRate * multiplier, 1);
-        }
-      });
-    });
-    
-    // Normalize by student count and create representative data
-    return problems.map(problem => {
-      const avgRate = students.length > 0 
-        ? difficultyStats[problem.difficulty as keyof typeof difficultyStats] / students.length 
-        : 0;
-      
-      // Assign status based on completion rate
-      let status = 'not_started';
-      if (avgRate > 0.7) status = 'completed';
-      else if (avgRate > 0.3) status = 'in_progress';
-      
-      return {
-        ...problem,
-        status
-      };
-    });
-  }, [problems, students]);
+
 
   const getInitials = (name: string) => {
     return name.split(" ").map(n => n[0]).join("").toUpperCase().slice(0, 2);
@@ -430,7 +387,59 @@ export default function AdminDashboard() {
                   <CardTitle>Difficulty Level Progress</CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <DifficultyProgressChart problems={globalDifficultyData} />
+                  {realDifficultyProgress ? (
+                    <div className="space-y-4">
+                      {realDifficultyProgress.map((diffData) => (
+                        <div key={diffData.difficulty} className="p-4 rounded-lg border">
+                          <div className="flex items-center justify-between mb-2">
+                            <h4 className="font-semibold text-lg">{diffData.difficulty}</h4>
+                            <span className="text-sm text-slate-600">
+                              {diffData.total_problems} problems
+                            </span>
+                          </div>
+                          
+                          <div className="grid grid-cols-3 gap-4 text-center">
+                            <div>
+                              <p className="text-2xl font-bold text-green-600">
+                                {Math.round(diffData.completed_by_students / diffData.total_problems)}
+                              </p>
+                              <p className="text-xs text-slate-600">Avg Completed</p>
+                            </div>
+                            <div>
+                              <p className="text-2xl font-bold text-yellow-600">
+                                {Math.round(diffData.in_progress_by_students / diffData.total_problems)}
+                              </p>
+                              <p className="text-xs text-slate-600">Avg In Progress</p>
+                            </div>
+                            <div>
+                              <p className="text-2xl font-bold text-slate-600">
+                                {Math.round(diffData.not_started_by_students / diffData.total_problems)}
+                              </p>
+                              <p className="text-xs text-slate-600">Avg Not Started</p>
+                            </div>
+                          </div>
+                          
+                          <div className="mt-3">
+                            <div className="flex text-xs text-slate-600 mb-1">
+                              <span>Completion Rate: {Math.round((diffData.completed_by_students / diffData.total_student_attempts) * 100)}%</span>
+                            </div>
+                            <div className="w-full bg-slate-200 rounded-full h-2">
+                              <div 
+                                className="bg-green-600 h-2 rounded-full"
+                                style={{ 
+                                  width: `${Math.round((diffData.completed_by_students / diffData.total_student_attempts) * 100)}%` 
+                                }}
+                              ></div>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="text-center py-8 text-slate-500">
+                      Loading difficulty progress data...
+                    </div>
+                  )}
                 </CardContent>
               </Card>
 
