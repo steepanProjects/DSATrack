@@ -450,33 +450,37 @@ export class DatabaseStorage implements IStorage {
     }
   }
 
-  async setStudentGoal(reg_no: string, type: string, target: number): Promise<StudentGoal> {
-    try {
-      // Delete existing goal of the same type
-      await db
-        .delete(student_goals)
-        .where(and(
-          eq(student_goals.reg_no, reg_no),
-          eq(student_goals.type, type)
-        ));
+  async setEnhancedStudentGoal(
+    reg_no: string, 
+    type: string, 
+    target: number, 
+    category: string | null = null, 
+    difficulty: string | null = null, 
+    reminder: number = 0, 
+    notes: string | null = null, 
+    priority: string = "medium"
+  ): Promise<StudentGoal> {
+    // Insert new goal (allow multiple goals of same type)
+    const [goal] = await db
+      .insert(student_goals)
+      .values({ 
+        reg_no, 
+        type, 
+        target, 
+        category, 
+        difficulty, 
+        reminder, 
+        notes, 
+        priority 
+      })
+      .returning();
+    
+    return goal;
+  }
 
-      // Insert new goal
-      const [goal] = await db
-        .insert(student_goals)
-        .values({ reg_no, type, target })
-        .returning();
-      
-      return goal;
-    } catch {
-      // Table doesn't exist yet, return mock data
-      return {
-        id: 1,
-        reg_no,
-        type,
-        target,
-        created_at: new Date()
-      };
-    }
+  // Keep backward compatibility
+  async setStudentGoal(reg_no: string, type: string, target: number): Promise<StudentGoal> {
+    return this.setEnhancedStudentGoal(reg_no, type, target);
   }
 
   async getTodayProgress(reg_no: string): Promise<{ completed_today: number }> {

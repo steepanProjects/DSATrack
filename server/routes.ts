@@ -376,8 +376,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
 
     try {
-      const { type, target } = req.body;
-      const goal = await storage.setStudentGoal(req.params.reg_no, type, target);
+      const { type, target, category, difficulty, reminder = false, notes, priority = "medium" } = req.body;
+      const goal = await storage.setEnhancedStudentGoal(
+        req.params.reg_no, 
+        type, 
+        target, 
+        category || null, 
+        difficulty || null, 
+        reminder ? 1 : 0, 
+        notes || null, 
+        priority
+      );
       res.json(goal);
     } catch (error) {
       res.status(500).json({ message: "Failed to set goal" });

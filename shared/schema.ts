@@ -45,8 +45,13 @@ export const bookmarks = pgTable("bookmarks", {
 export const student_goals = pgTable("student_goals", {
   id: serial("id").primaryKey(),
   reg_no: text("reg_no").notNull().references(() => students.reg_no),
-  type: text("type").notNull(), // daily, weekly
+  type: text("type").notNull(), // daily, weekly, monthly
   target: integer("target").notNull(),
+  category: text("category"), // optional category filter
+  difficulty: text("difficulty"), // optional difficulty filter
+  reminder: integer("reminder").default(0), // 0 = false, 1 = true
+  notes: text("notes"), // optional personal notes
+  priority: text("priority").notNull().default("medium"), // low, medium, high
   created_at: timestamp("created_at").defaultNow(),
 });
 

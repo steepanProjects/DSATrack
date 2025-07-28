@@ -4,19 +4,21 @@ import { useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Settings, LogOut, Code, CheckCircle, Clock, Circle } from "lucide-react";
+import { Settings, LogOut, Code, CheckCircle, Clock, Circle, Target, Plus } from "lucide-react";
 import { ProgressPieChart } from "@/components/charts/progress-pie-chart";
 import { DifficultyDoughnutChart } from "@/components/charts/difficulty-doughnut-chart";
 import { CategoryBarChart } from "@/components/charts/category-bar-chart";
 import { CategoryProblemsView } from "@/components/category-problems-view";
 import { StudentSettings } from "@/components/student-settings";
 import { StudentGoals } from "@/components/student-goals";
+import { EnhancedGoalDialog } from "@/components/enhanced-goal-dialog";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import type { Problem } from "@shared/schema";
 
 export default function StudentDashboard() {
   const { user, logoutMutation } = useAuth();
   const [showSettings, setShowSettings] = useState(false);
+  const [showGoalDialog, setShowGoalDialog] = useState(false);
 
   if (!user || user.type !== "student") {
     return null;
@@ -128,8 +130,24 @@ export default function StudentDashboard() {
 
         {/* Goals Section */}
         <div className="mb-8">
-          <h2 className="text-xl font-semibold text-slate-800 mb-4">Learning Goals</h2>
+          <div className="flex justify-between items-center mb-4">
+            <h2 className="text-xl font-semibold text-slate-800">Learning Goals</h2>
+            <Button 
+              onClick={() => setShowGoalDialog(true)}
+              className="flex items-center gap-2 bg-primary hover:bg-primary/90"
+            >
+              <Target className="h-4 w-4" />
+              Set Goal
+            </Button>
+          </div>
           <StudentGoals studentRegNo={user.reg_no} />
+          
+          {/* Enhanced Goal Dialog */}
+          <EnhancedGoalDialog 
+            studentRegNo={user.reg_no}
+            open={showGoalDialog}
+            onOpenChange={setShowGoalDialog}
+          />
         </div>
 
         {/* Charts Section */}
