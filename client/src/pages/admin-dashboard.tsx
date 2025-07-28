@@ -805,7 +805,8 @@ export default function AdminDashboard() {
               <div className="space-y-6">
                 {studentDetails && Array.isArray(studentDetails) && (
                   <>
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    {/* Overall Statistics */}
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
                       <Card>
                         <CardContent className="p-4">
                           <p className="text-sm text-slate-600">Completed</p>
@@ -831,59 +832,134 @@ export default function AdminDashboard() {
                         </CardContent>
                       </Card>
                     </div>
-                    
-                    {/* Individual Progress Chart */}
-                    <Card>
+
+                    {/* Difficulty Level Statistics */}
+                    <Card className="mb-6">
                       <CardHeader>
-                        <CardTitle className="text-lg">Overall Progress Distribution</CardTitle>
+                        <CardTitle className="text-lg">Progress by Difficulty Level</CardTitle>
                       </CardHeader>
                       <CardContent>
-                        <div className="h-80">
-                          <ResponsiveContainer width="100%" height="100%">
-                            <PieChart>
-                              <Pie
-                                data={(() => {
-                                  const completed = studentDetails.filter((p: any) => p.status === 'completed').length;
-                                  const inProgress = studentDetails.filter((p: any) => p.status === 'in_progress').length;
-                                  const notStarted = studentDetails.filter((p: any) => p.status === 'not_started').length;
-                                  
-                                  return [
-                                    { name: 'Completed', value: completed, color: '#22c55e' },
-                                    { name: 'In Progress', value: inProgress, color: '#eab308' },
-                                    { name: 'Not Started', value: notStarted, color: '#64748b' }
-                                  ].filter(item => item.value > 0);
-                                })()}
-                                cx="50%"
-                                cy="50%"
-                                labelLine={false}
-                                label={({ name, value, percent }) => `${name}: ${value} (${(percent * 100).toFixed(0)}%)`}
-                                outerRadius={80}
-                                fill="#8884d8"
-                                dataKey="value"
-                              >
-                                {(() => {
-                                  const completed = studentDetails.filter((p: any) => p.status === 'completed').length;
-                                  const inProgress = studentDetails.filter((p: any) => p.status === 'in_progress').length;
-                                  const notStarted = studentDetails.filter((p: any) => p.status === 'not_started').length;
-                                  
-                                  return [
-                                    { name: 'Completed', value: completed, color: '#22c55e' },
-                                    { name: 'In Progress', value: inProgress, color: '#eab308' },
-                                    { name: 'Not Started', value: notStarted, color: '#64748b' }
-                                  ].filter(item => item.value > 0);
-                                })().map((entry, index) => (
-                                  <Cell key={`cell-${index}`} fill={entry.color} />
-                                ))}
-                              </Pie>
-                              <Tooltip 
-                                formatter={(value: any) => [value, 'Problems']}
-                              />
-                              <Legend />
-                            </PieChart>
-                          </ResponsiveContainer>
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                          {(() => {
+                            const easyProblems = studentDetails.filter((p: any) => p.difficulty === 'Easy');
+                            const mediumProblems = studentDetails.filter((p: any) => p.difficulty === 'Medium');
+                            const hardProblems = studentDetails.filter((p: any) => p.difficulty === 'Hard');
+                            
+                            const difficultyStats = [
+                              {
+                                name: 'Easy',
+                                total: easyProblems.length,
+                                completed: easyProblems.filter((p: any) => p.status === 'completed').length,
+                                color: 'text-green-600',
+                                bgColor: 'bg-green-50 border-green-200'
+                              },
+                              {
+                                name: 'Medium',
+                                total: mediumProblems.length,
+                                completed: mediumProblems.filter((p: any) => p.status === 'completed').length,
+                                color: 'text-orange-600',
+                                bgColor: 'bg-orange-50 border-orange-200'
+                              },
+                              {
+                                name: 'Hard',
+                                total: hardProblems.length,
+                                completed: hardProblems.filter((p: any) => p.status === 'completed').length,
+                                color: 'text-red-600',
+                                bgColor: 'bg-red-50 border-red-200'
+                              }
+                            ];
+
+                            return difficultyStats.map((stat) => (
+                              <Card key={stat.name} className={`border-2 ${stat.bgColor}`}>
+                                <CardContent className="p-4">
+                                  <div className="flex items-center justify-between mb-2">
+                                    <h3 className="font-semibold text-slate-800">{stat.name}</h3>
+                                    <Badge className={stat.color.replace('text-', 'bg-').replace('-600', '-100') + ' ' + stat.color}>
+                                      {stat.total > 0 ? Math.round((stat.completed / stat.total) * 100) : 0}%
+                                    </Badge>
+                                  </div>
+                                  <p className="text-sm text-slate-600 mb-1">
+                                    {stat.completed} of {stat.total} completed
+                                  </p>
+                                  <div className="w-full bg-slate-200 rounded-full h-2">
+                                    <div 
+                                      className={`h-2 rounded-full ${stat.color.replace('text-', 'bg-')}`}
+                                      style={{ width: `${stat.total > 0 ? (stat.completed / stat.total) * 100 : 0}%` }}
+                                    ></div>
+                                  </div>
+                                </CardContent>
+                              </Card>
+                            ));
+                          })()}
                         </div>
                       </CardContent>
                     </Card>
+                    
+                    {/* Progress Charts */}
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                      <Card>
+                        <CardHeader>
+                          <CardTitle className="text-lg">Overall Progress Distribution</CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                          <div className="h-80">
+                            <ResponsiveContainer width="100%" height="100%">
+                              <PieChart>
+                                <Pie
+                                  data={(() => {
+                                    const completed = studentDetails.filter((p: any) => p.status === 'completed').length;
+                                    const inProgress = studentDetails.filter((p: any) => p.status === 'in_progress').length;
+                                    const notStarted = studentDetails.filter((p: any) => p.status === 'not_started').length;
+                                    
+                                    return [
+                                      { name: 'Completed', value: completed, color: '#22c55e' },
+                                      { name: 'In Progress', value: inProgress, color: '#eab308' },
+                                      { name: 'Not Started', value: notStarted, color: '#64748b' }
+                                    ].filter(item => item.value > 0);
+                                  })()}
+                                  cx="50%"
+                                  cy="50%"
+                                  labelLine={false}
+                                  label={({ name, value, percent }) => `${name}: ${value} (${(percent * 100).toFixed(0)}%)`}
+                                  outerRadius={80}
+                                  fill="#8884d8"
+                                  dataKey="value"
+                                >
+                                  {(() => {
+                                    const completed = studentDetails.filter((p: any) => p.status === 'completed').length;
+                                    const inProgress = studentDetails.filter((p: any) => p.status === 'in_progress').length;
+                                    const notStarted = studentDetails.filter((p: any) => p.status === 'not_started').length;
+                                    
+                                    return [
+                                      { name: 'Completed', value: completed, color: '#22c55e' },
+                                      { name: 'In Progress', value: inProgress, color: '#eab308' },
+                                      { name: 'Not Started', value: notStarted, color: '#64748b' }
+                                    ].filter(item => item.value > 0);
+                                  })().map((entry, index) => (
+                                    <Cell key={`cell-${index}`} fill={entry.color} />
+                                  ))}
+                                </Pie>
+                                <Tooltip 
+                                  formatter={(value: any) => [value, 'Problems']}
+                                />
+                                <Legend />
+                              </PieChart>
+                            </ResponsiveContainer>
+                          </div>
+                        </CardContent>
+                      </Card>
+
+                      <Card>
+                        <CardHeader>
+                          <CardTitle className="text-lg">Difficulty Level Progress</CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                          <div className="h-80 flex items-center justify-center">
+                            <DifficultyProgressChart problems={studentDetails || []} />
+                          </div>
+                        </CardContent>
+                      </Card>
+                    </div>
                   </>
                 )}
                 
