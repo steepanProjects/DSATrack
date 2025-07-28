@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect, useRef, useCallback } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -21,11 +21,26 @@ interface CategoryProblemsViewProps {
   studentRegNo: string;
 }
 
+// Batching configuration
+const BATCH_DELAY = 2000; // 2 seconds
+const MAX_BATCH_SIZE = 10; // Maximum updates in one batch
+
+interface QueuedUpdate {
+  problemId: number;
+  status: string;
+  timestamp: number;
+}
+
 export function CategoryProblemsView({ studentRegNo }: CategoryProblemsViewProps) {
   const queryClient = useQueryClient();
   const [searchTerm, setSearchTerm] = useState("");
   const [expandedCategories, setExpandedCategories] = useState<Set<string>>(new Set());
   const [selectedProblem, setSelectedProblem] = useState<Problem | null>(null);
+  
+  // Batching state
+  const [updateQueue, setUpdateQueue] = useState<QueuedUpdate[]>([]);
+  const [isProcessingBatch, setIsProcessingBatch] = useState(false);
+  const batchTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   const { data: problems } = useQuery<Problem[]>({
     queryKey: ["/api/problems"],
@@ -39,76 +54,111 @@ export function CategoryProblemsView({ studentRegNo }: CategoryProblemsViewProps
     queryKey: ["/api/student", studentRegNo, "bookmarks"],
   });
 
-  const updateProgressMutation = useMutation({
-    mutationFn: async ({ problemId, status }: { problemId: number; status: string }) => {
-      const res = await apiRequest("PUT", `/api/student/${studentRegNo}/progress/${problemId}`, { status });
-      return res.json();
-    },
-    onMutate: async ({ problemId, status }) => {
-      // Cancel any outgoing refetches (so they don't overwrite our optimistic update)
-      await queryClient.cancelQueries({ queryKey: ["/api/student", studentRegNo, "progress"] });
-      await queryClient.cancelQueries({ queryKey: ["/api/student", studentRegNo, "stats"] });
+  // Batch processing function
+  const processBatch = useCallback(async (updates: QueuedUpdate[]) => {
+    if (updates.length === 0) return;
+    
+    setIsProcessingBatch(true);
+    try {
+      // Process all updates in the batch
+      await Promise.all(
+        updates.map(async (update) => {
+          const res = await apiRequest("PUT", `/api/student/${studentRegNo}/progress/${update.problemId}`, { 
+            status: update.status 
+          });
+          return res.json();
+        })
+      );
+      
+      // Clear processed updates from queue
+      setUpdateQueue(prev => prev.filter(item => 
+        !updates.some(update => update.problemId === item.problemId)
+      ));
+      
+      // Refresh data from server
+      queryClient.invalidateQueries({ queryKey: ["/api/student", studentRegNo, "progress"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/student", studentRegNo, "stats"] });
+      
+    } catch (error) {
+      console.error("Batch update failed:", error);
+      // Keep failed updates in queue for retry
+    } finally {
+      setIsProcessingBatch(false);
+    }
+  }, [studentRegNo, queryClient]);
 
-      // Snapshot the previous values
-      const previousProgress = queryClient.getQueryData(["/api/student", studentRegNo, "progress"]);
-      const previousStats = queryClient.getQueryData(["/api/student", studentRegNo, "stats"]);
-
-      // Optimistically update progress
-      queryClient.setQueryData(["/api/student", studentRegNo, "progress"], (old: any) => {
-        if (!Array.isArray(old)) return [];
-        
-        const existingIndex = old.findIndex((p: any) => p.problem_id === problemId);
-        if (existingIndex >= 0) {
-          // Update existing progress
-          const updated = [...old];
-          updated[existingIndex] = { ...updated[existingIndex], status };
-          return updated;
-        } else if (status !== "not_started") {
-          // Add new progress entry
-          return [...old, { id: Date.now(), reg_no: studentRegNo, problem_id: problemId, status }];
-        }
-        return old;
-      });
-
-      // Optimistically update stats
-      queryClient.setQueryData(["/api/student", studentRegNo, "stats"], (old: any) => {
-        if (!old) return old;
-        
-        const currentProgress = queryClient.getQueryData(["/api/student", studentRegNo, "progress"]) as any[];
-        if (!Array.isArray(currentProgress)) return old;
-        
-        const completed = currentProgress.filter((p: any) => p.status === "completed").length;
-        const inProgress = currentProgress.filter((p: any) => p.status === "in_progress").length;
-        const total = old.total || 0;
-        const notStarted = total - completed - inProgress;
-        
-        return {
-          ...old,
-          completed,
-          in_progress: inProgress,
-          not_started: notStarted
-        };
-      });
-
-      return { previousProgress, previousStats };
-    },
-    onError: (err, variables, context) => {
-      // If the mutation fails, use the context returned from onMutate to roll back
-      if (context?.previousProgress) {
-        queryClient.setQueryData(["/api/student", studentRegNo, "progress"], context.previousProgress);
+  // Auto-batch processing effect
+  useEffect(() => {
+    if (updateQueue.length === 0) return;
+    
+    // Clear existing timeout
+    if (batchTimeoutRef.current) {
+      clearTimeout(batchTimeoutRef.current);
+    }
+    
+    // Process immediately if batch is full
+    if (updateQueue.length >= MAX_BATCH_SIZE) {
+      processBatch(updateQueue);
+      return;
+    }
+    
+    // Otherwise, set a timeout to process after delay
+    batchTimeoutRef.current = setTimeout(() => {
+      processBatch(updateQueue);
+    }, BATCH_DELAY);
+    
+    return () => {
+      if (batchTimeoutRef.current) {
+        clearTimeout(batchTimeoutRef.current);
       }
-      if (context?.previousStats) {
-        queryClient.setQueryData(["/api/student", studentRegNo, "stats"], context.previousStats);
+    };
+  }, [updateQueue, processBatch]);
+
+  // Immediate UI update function
+  const updateProgressInstantly = useCallback((problemId: number, status: string) => {
+    // Immediately update UI cache
+    queryClient.setQueryData(["/api/student", studentRegNo, "progress"], (old: any) => {
+      if (!Array.isArray(old)) return [];
+      
+      const existingIndex = old.findIndex((p: any) => p.problem_id === problemId);
+      if (existingIndex >= 0) {
+        const updated = [...old];
+        updated[existingIndex] = { ...updated[existingIndex], status };
+        return updated;
+      } else if (status !== "not_started") {
+        return [...old, { id: Date.now(), reg_no: studentRegNo, problem_id: problemId, status }];
       }
-    },
-    onSettled: () => {
-      // Debounced refetch to avoid too many requests
-      setTimeout(() => {
-        queryClient.invalidateQueries({ queryKey: ["/api/student", studentRegNo, "progress"] });
-        queryClient.invalidateQueries({ queryKey: ["/api/student", studentRegNo, "stats"] });
-      }, 500);
-    },
-  });
+      return old;
+    });
+
+    // Update stats immediately
+    queryClient.setQueryData(["/api/student", studentRegNo, "stats"], (old: any) => {
+      if (!old) return old;
+      
+      const currentProgress = queryClient.getQueryData(["/api/student", studentRegNo, "progress"]) as any[];
+      if (!Array.isArray(currentProgress)) return old;
+      
+      const completed = currentProgress.filter((p: any) => p.status === "completed").length;
+      const inProgress = currentProgress.filter((p: any) => p.status === "in_progress").length;
+      const total = old.total || 0;
+      const notStarted = total - completed - inProgress;
+      
+      return {
+        ...old,
+        completed,
+        in_progress: inProgress,
+        not_started: notStarted
+      };
+    });
+    
+    // Add to batch queue
+    setUpdateQueue(prev => {
+      // Remove any existing update for this problem
+      const filtered = prev.filter(item => item.problemId !== problemId);
+      // Add new update
+      return [...filtered, { problemId, status, timestamp: Date.now() }];
+    });
+  }, [studentRegNo, queryClient]);
 
   const toggleBookmarkMutation = useMutation({
     mutationFn: async (problemId: number) => {
@@ -248,7 +298,7 @@ export function CategoryProblemsView({ studentRegNo }: CategoryProblemsViewProps
 
   const handleStatusChange = (problemId: number, completed: boolean) => {
     const newStatus = completed ? "completed" : "not_started";
-    updateProgressMutation.mutate({ problemId, status: newStatus });
+    updateProgressInstantly(problemId, newStatus);
   };
 
   const getDifficultyBadge = (difficulty: string) => {
@@ -276,15 +326,24 @@ export function CategoryProblemsView({ studentRegNo }: CategoryProblemsViewProps
 
   return (
     <div className="space-y-6">
-      {/* Search */}
-      <div className="relative">
-        <Search className="absolute left-3 top-3 h-4 w-4 text-slate-400" />
-        <Input
-          placeholder="Search problems..."
-          value={searchTerm}
-          onChange={(e) => setSearchTerm(e.target.value)}
-          className="pl-10"
-        />
+      {/* Search and Batch Status */}
+      <div className="flex items-center space-x-4">
+        <div className="relative flex-1">
+          <Search className="absolute left-3 top-3 h-4 w-4 text-slate-400" />
+          <Input
+            placeholder="Search problems..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="pl-10"
+          />
+        </div>
+        {updateQueue.length > 0 && (
+          <div className="flex items-center space-x-2 text-sm text-orange-600 bg-orange-50 px-3 py-2 rounded-lg border border-orange-200">
+            <div className="h-2 w-2 bg-orange-500 rounded-full animate-pulse" />
+            <span>{updateQueue.length} pending update{updateQueue.length !== 1 ? 's' : ''}</span>
+            {isProcessingBatch && <span className="text-blue-600">(syncing...)</span>}
+          </div>
+        )}
       </div>
 
       {/* Categories */}
@@ -357,14 +416,20 @@ export function CategoryProblemsView({ studentRegNo }: CategoryProblemsViewProps
                             <span className="text-sm font-mono text-slate-500 w-8">
                               #{problem.id}
                             </span>
-                            <Checkbox
-                              checked={problem.status === "completed"}
-                              onCheckedChange={(checked) => 
-                                handleStatusChange(problem.id, checked as boolean)
-                              }
-                              disabled={updateProgressMutation.isPending}
-                              className="h-5 w-5"
-                            />
+                            <div className="relative">
+                              <Checkbox
+                                checked={problem.status === "completed"}
+                                onCheckedChange={(checked) => 
+                                  handleStatusChange(problem.id, checked as boolean)
+                                }
+                                disabled={isProcessingBatch}
+                                className="h-5 w-5"
+                              />
+                              {updateQueue.some(u => u.problemId === problem.id) && (
+                                <div className="absolute -top-1 -right-1 h-2 w-2 bg-orange-500 rounded-full animate-pulse" 
+                                     title="Pending sync to server" />
+                              )}
+                            </div>
                           </div>
                           <div className="flex-1">
                             <div className="flex items-center space-x-3">
@@ -385,7 +450,7 @@ export function CategoryProblemsView({ studentRegNo }: CategoryProblemsViewProps
                             variant="ghost"
                             size="sm"
                             onClick={() => toggleBookmarkMutation.mutate(problem.id)}
-                            disabled={toggleBookmarkMutation.isPending}
+                            disabled={isProcessingBatch}
                             className={problem.isBookmarked ? "text-yellow-600" : "text-slate-400"}
                           >
                             <Bookmark className="h-4 w-4" fill={problem.isBookmarked ? "currentColor" : "none"} />
