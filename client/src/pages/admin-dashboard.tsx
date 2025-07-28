@@ -8,12 +8,16 @@ import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { Download, LogOut, Search, Users, TrendingUp, Watch, Plus, BarChart3, Key, Trash2 } from "lucide-react";
+import { Download, LogOut, Search, Users, TrendingUp, Watch, Plus, BarChart3, Key, Trash2, Upload, Trophy, PieChart } from "lucide-react";
 import { apiRequest } from "@/lib/queryClient";
-import type { Student } from "@shared/schema";
+import { ProgressPieChart } from "@/components/charts/progress-pie-chart";
+import { DifficultyDoughnutChart } from "@/components/charts/difficulty-doughnut-chart";
+import { CategoryBarChart } from "@/components/charts/category-bar-chart";
+import type { Student, Problem } from "@shared/schema";
 
 const addStudentSchema = z.object({
   reg_no: z.string().min(1, "Registration number is required"),
@@ -35,6 +39,9 @@ export default function AdminDashboard() {
   const [searchTerm, setSearchTerm] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
   const [showAddDialog, setShowAddDialog] = useState(false);
+  const [selectedStudent, setSelectedStudent] = useState<string | null>(null);
+  const [studentCsvFile, setStudentCsvFile] = useState<File | null>(null);
+  const [progressCsvFile, setProgressCsvFile] = useState<File | null>(null);
   const itemsPerPage = 10;
 
   if (!user || user.type !== "admin") {
@@ -43,6 +50,15 @@ export default function AdminDashboard() {
 
   const { data: students } = useQuery<StudentWithProgress[]>({
     queryKey: ["/api/admin/students"],
+  });
+
+  const { data: problems } = useQuery<Problem[]>({
+    queryKey: ["/api/problems"],
+  });
+
+  const { data: studentDetails } = useQuery({
+    queryKey: ["/api/student", selectedStudent, "progress"],
+    enabled: !!selectedStudent,
   });
 
   const addStudentMutation = useMutation({
@@ -74,6 +90,28 @@ export default function AdminDashboard() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/admin/students"] });
+    },
+  });
+
+  const uploadStudentsCsvMutation = useMutation({
+    mutationFn: async (csvData: string) => {
+      const res = await apiRequest("POST", "/api/admin/upload-students-csv", { csvData });
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/students"] });
+      setStudentCsvFile(null);
+    },
+  });
+
+  const uploadProgressCsvMutation = useMutation({
+    mutationFn: async (csvData: string) => {
+      const res = await apiRequest("POST", "/api/admin/upload-progress-csv", { csvData });
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/students"] });
+      setProgressCsvFile(null);
     },
   });
 
@@ -114,6 +152,20 @@ export default function AdminDashboard() {
     await addStudentMutation.mutateAsync(data);
   };
 
+  const handleStudentCsvUpload = async () => {
+    if (!studentCsvFile) return;
+    
+    const text = await studentCsvFile.text();
+    uploadStudentsCsvMutation.mutate(text);
+  };
+
+  const handleProgressCsvUpload = async () => {
+    if (!progressCsvFile) return;
+    
+    const text = await progressCsvFile.text();
+    uploadProgressCsvMutation.mutate(text);
+  };
+
   // Filter and paginate students
   const filteredStudents = useMemo(() => {
     if (!students) return [];
@@ -131,8 +183,8 @@ export default function AdminDashboard() {
 
   const totalPages = Math.ceil(filteredStudents.length / itemsPerPage);
 
-  // Calculate admin stats
-  const adminStats = useMemo(() => {
+  // Calculate local admin stats (keep separate from global stats API)
+  const localAdminStats = useMemo(() => {
     if (!students) return { totalStudents: 0, avgCompletion: 0, activeStudents: 0 };
     
     const totalStudents = students.length;
@@ -142,6 +194,32 @@ export default function AdminDashboard() {
     const activeStudents = students.filter(s => s.completed > 0 || s.in_progress > 0).length;
 
     return { totalStudents, avgCompletion, activeStudents };
+  }, [students]);
+
+  // Top performers calculation
+  const topPerformers = useMemo(() => {
+    if (!students) return [];
+    return students
+      .map(s => ({ ...s, percentage: Math.round((s.completed / s.total) * 100) }))
+      .sort((a, b) => b.percentage - a.percentage)
+      .slice(0, 5);
+  }, [students]);
+
+  // Global stats for charts
+  const globalStats = useMemo(() => {
+    if (!students) return { completed: 0, in_progress: 0, not_started: 0, total: 0 };
+    
+    const totals = students.reduce(
+      (acc, student) => ({
+        completed: acc.completed + student.completed,
+        in_progress: acc.in_progress + student.in_progress,
+        not_started: acc.not_started + student.not_started,
+        total: acc.total + student.total
+      }),
+      { completed: 0, in_progress: 0, not_started: 0, total: 0 }
+    );
+    
+    return totals;
   }, [students]);
 
   const getInitials = (name: string) => {
@@ -190,7 +268,7 @@ export default function AdminDashboard() {
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm font-medium text-slate-600">Total Students</p>
-                  <p className="text-3xl font-bold text-slate-800">{adminStats.totalStudents}</p>
+                  <p className="text-3xl font-bold text-slate-800">{localAdminStats.totalStudents}</p>
                 </div>
                 <div className="bg-primary/10 p-3 rounded-lg">
                   <Users className="text-primary h-6 w-6" />
@@ -203,7 +281,7 @@ export default function AdminDashboard() {
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm font-medium text-slate-600">Avg. Completion</p>
-                  <p className="text-3xl font-bold text-secondary">{adminStats.avgCompletion}%</p>
+                  <p className="text-3xl font-bold text-secondary">{localAdminStats.avgCompletion}%</p>
                 </div>
                 <div className="bg-secondary/10 p-3 rounded-lg">
                   <TrendingUp className="text-secondary h-6 w-6" />
@@ -216,7 +294,7 @@ export default function AdminDashboard() {
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm font-medium text-slate-600">Active Students</p>
-                  <p className="text-3xl font-bold text-accent">{adminStats.activeStudents}</p>
+                  <p className="text-3xl font-bold text-accent">{localAdminStats.activeStudents}</p>
                 </div>
                 <div className="bg-accent/10 p-3 rounded-lg">
                   <Watch className="text-accent h-6 w-6" />
@@ -226,8 +304,152 @@ export default function AdminDashboard() {
           </Card>
         </div>
 
-        {/* Students Management */}
-        <Card>
+        {/* Admin Dashboard Charts and Analytics */}
+        <Tabs defaultValue="students" className="w-full mb-8">
+          <TabsList className="grid w-full grid-cols-3">
+            <TabsTrigger value="students">Students</TabsTrigger>
+            <TabsTrigger value="analytics">Analytics</TabsTrigger>
+            <TabsTrigger value="upload">Upload Data</TabsTrigger>
+          </TabsList>
+          
+          <TabsContent value="analytics" className="space-y-8">
+            {/* Charts Section */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <PieChart className="h-5 w-5" />
+                    Global Progress Overview
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <ProgressPieChart data={globalStats} />
+                </CardContent>
+              </Card>
+              
+              <Card>
+                <CardHeader>
+                  <CardTitle>Problem Difficulty Distribution</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <DifficultyDoughnutChart problems={problems || []} />
+                </CardContent>
+              </Card>
+            </div>
+
+            {/* Category Heatmap and Top Performers */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              <Card>
+                <CardHeader>
+                  <CardTitle>Category Progress Heatmap</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <CategoryBarChart problems={problems || []} />
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Trophy className="h-5 w-5" />
+                    Top Performers
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-4">
+                    {topPerformers.map((student, index) => (
+                      <div key={student.reg_no} className="flex items-center justify-between p-3 rounded-lg bg-slate-50">
+                        <div className="flex items-center space-x-3">
+                          <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold ${
+                            index === 0 ? 'bg-yellow-100 text-yellow-700' :
+                            index === 1 ? 'bg-gray-100 text-gray-700' :
+                            index === 2 ? 'bg-orange-100 text-orange-700' :
+                            'bg-slate-100 text-slate-700'
+                          }`}>
+                            {index + 1}
+                          </div>
+                          <div>
+                            <p className="font-medium text-slate-800">{student.name}</p>
+                            <p className="text-sm text-slate-600">{student.department}</p>
+                          </div>
+                        </div>
+                        <div className="text-right">
+                          <p className="font-bold text-slate-800">{student.percentage}%</p>
+                          <p className="text-sm text-slate-600">{student.completed}/{student.total}</p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+          </TabsContent>
+
+          <TabsContent value="upload" className="space-y-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Upload className="h-5 w-5" />
+                    Upload Students CSV
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-4">
+                    <p className="text-sm text-slate-600">
+                      Upload a CSV file with student data. Required columns: reg_no, name, department, password
+                    </p>
+                    <Input 
+                      type="file" 
+                      accept=".csv" 
+                      className="cursor-pointer" 
+                      onChange={(e) => setStudentCsvFile(e.target.files?.[0] || null)}
+                    />
+                    <Button 
+                      className="w-full" 
+                      onClick={handleStudentCsvUpload}
+                      disabled={!studentCsvFile || uploadStudentsCsvMutation.isPending}
+                    >
+                      {uploadStudentsCsvMutation.isPending ? "Uploading..." : "Upload Students"}
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+              
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Upload className="h-5 w-5" />
+                    Upload Progress CSV
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-4">
+                    <p className="text-sm text-slate-600">
+                      Upload progress data. Required columns: reg_no, problem_id, status
+                    </p>
+                    <Input 
+                      type="file" 
+                      accept=".csv" 
+                      className="cursor-pointer"
+                      onChange={(e) => setProgressCsvFile(e.target.files?.[0] || null)}
+                    />
+                    <Button 
+                      className="w-full"
+                      onClick={handleProgressCsvUpload}
+                      disabled={!progressCsvFile || uploadProgressCsvMutation.isPending}
+                    >
+                      {uploadProgressCsvMutation.isPending ? "Uploading..." : "Upload Progress"}
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+          </TabsContent>
+
+          <TabsContent value="students">
+            {/* Students Management */}
+            <Card>
           <CardHeader>
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
               <CardTitle>Student Management</CardTitle>
@@ -376,7 +598,12 @@ export default function AdminDashboard() {
                         </td>
                         <td className="px-6 py-4">
                           <div className="flex items-center space-x-2">
-                            <Button variant="ghost" size="sm" title="View Progress">
+                            <Button 
+                              variant="ghost" 
+                              size="sm" 
+                              title="View Progress"
+                              onClick={() => setSelectedStudent(student.reg_no)}
+                            >
                               <BarChart3 className="h-4 w-4" />
                             </Button>
                             <Button
@@ -447,6 +674,92 @@ export default function AdminDashboard() {
             </div>
           </CardContent>
         </Card>
+          </TabsContent>
+        </Tabs>
+
+        {/* Student Details Modal */}
+        {selectedStudent && (
+          <Dialog open={!!selectedStudent} onOpenChange={() => setSelectedStudent(null)}>
+            <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
+              <DialogHeader>
+                <DialogTitle>Student Progress Details</DialogTitle>
+              </DialogHeader>
+              <div className="space-y-6">
+                {studentDetails && (
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <Card>
+                      <CardContent className="p-4">
+                        <p className="text-sm text-slate-600">Completed</p>
+                        <p className="text-2xl font-bold text-green-600">
+                          {studentDetails.filter((p: any) => p.status === 'completed').length}
+                        </p>
+                      </CardContent>
+                    </Card>
+                    <Card>
+                      <CardContent className="p-4">
+                        <p className="text-sm text-slate-600">In Progress</p>
+                        <p className="text-2xl font-bold text-yellow-600">
+                          {studentDetails.filter((p: any) => p.status === 'in_progress').length}
+                        </p>
+                      </CardContent>
+                    </Card>
+                    <Card>
+                      <CardContent className="p-4">
+                        <p className="text-sm text-slate-600">Not Started</p>
+                        <p className="text-2xl font-bold text-slate-600">
+                          {studentDetails.filter((p: any) => p.status === 'not_started').length}
+                        </p>
+                      </CardContent>
+                    </Card>
+                  </div>
+                )}
+                
+                <div className="border rounded-lg overflow-hidden">
+                  <table className="w-full">
+                    <thead className="bg-slate-50">
+                      <tr>
+                        <th className="px-4 py-2 text-left text-sm font-medium text-slate-600">Problem</th>
+                        <th className="px-4 py-2 text-left text-sm font-medium text-slate-600">Category</th>
+                        <th className="px-4 py-2 text-left text-sm font-medium text-slate-600">Difficulty</th>
+                        <th className="px-4 py-2 text-left text-sm font-medium text-slate-600">Status</th>
+                        <th className="px-4 py-2 text-left text-sm font-medium text-slate-600">Notes</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {studentDetails?.map((item: any) => (
+                        <tr key={item.id} className="border-t">
+                          <td className="px-4 py-2 text-sm">{item.title}</td>
+                          <td className="px-4 py-2 text-sm">{item.category}</td>
+                          <td className="px-4 py-2">
+                            <Badge className={
+                              item.difficulty === 'Easy' ? 'bg-green-100 text-green-700' :
+                              item.difficulty === 'Medium' ? 'bg-yellow-100 text-yellow-700' :
+                              'bg-red-100 text-red-700'
+                            }>
+                              {item.difficulty}
+                            </Badge>
+                          </td>
+                          <td className="px-4 py-2">
+                            <Badge className={
+                              item.status === 'completed' ? 'bg-green-100 text-green-700' :
+                              item.status === 'in_progress' ? 'bg-yellow-100 text-yellow-700' :
+                              'bg-slate-100 text-slate-700'
+                            }>
+                              {item.status?.replace('_', ' ') || 'not started'}
+                            </Badge>
+                          </td>
+                          <td className="px-4 py-2 text-sm text-slate-600 max-w-xs truncate">
+                            {item.notes || '-'}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </DialogContent>
+          </Dialog>
+        )}
       </div>
     </div>
   );

@@ -273,6 +273,72 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.post("/api/admin/upload-students-csv", async (req, res) => {
+    if (!req.isAuthenticated() || (req.user as any)?.type !== 'admin') {
+      return res.status(401).json({ message: "Admin access required" });
+    }
+
+    try {
+      const { csvData } = req.body;
+      const rows = csvData.split('\n').slice(1); // Skip header
+      let importedCount = 0;
+
+      for (const row of rows) {
+        if (row.trim()) {
+          const [reg_no, name, department, password] = row.split(',').map(field => field.trim().replace(/"/g, ''));
+          if (reg_no && name && department && password) {
+            const hashedPassword = await hashPassword(password);
+            try {
+              await storage.createStudent({
+                reg_no,
+                name,
+                department,
+                password_hash: hashedPassword
+              });
+              importedCount++;
+            } catch (error) {
+              // Student already exists, skip
+            }
+          }
+        }
+      }
+
+      res.json({ message: `Successfully imported ${importedCount} students` });
+    } catch (error) {
+      res.status(500).json({ message: "Failed to import students" });
+    }
+  });
+
+  app.post("/api/admin/upload-progress-csv", async (req, res) => {
+    if (!req.isAuthenticated() || (req.user as any)?.type !== 'admin') {
+      return res.status(401).json({ message: "Admin access required" });
+    }
+
+    try {
+      const { csvData } = req.body;
+      const rows = csvData.split('\n').slice(1); // Skip header
+      let importedCount = 0;
+
+      for (const row of rows) {
+        if (row.trim()) {
+          const [reg_no, problem_id, status] = row.split(',').map(field => field.trim().replace(/"/g, ''));
+          if (reg_no && problem_id && status) {
+            try {
+              await storage.updateStudentProgress(reg_no, parseInt(problem_id), status as any);
+              importedCount++;
+            } catch (error) {
+              // Progress update failed, skip
+            }
+          }
+        }
+      }
+
+      res.json({ message: `Successfully imported ${importedCount} progress records` });
+    } catch (error) {
+      res.status(500).json({ message: "Failed to import progress data" });
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }
