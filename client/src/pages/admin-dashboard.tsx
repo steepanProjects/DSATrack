@@ -853,51 +853,51 @@ export default function AdminDashboard() {
         {/* Student Details Modal */}
         {selectedStudent && (
           <Dialog open={!!selectedStudent} onOpenChange={() => setSelectedStudent(null)}>
-            <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto" aria-describedby="student-progress-description">
+            <DialogContent className="w-[95vw] max-w-4xl max-h-[85vh] overflow-y-auto mx-auto" aria-describedby="student-progress-description">
               <DialogHeader>
-                <DialogTitle>Student Progress Details</DialogTitle>
+                <DialogTitle className="text-lg sm:text-xl">Student Progress Details</DialogTitle>
               </DialogHeader>
               <p id="student-progress-description" className="sr-only">
                 Detailed view of student's progress across all DSA problems including completion status and notes
               </p>
-              <div className="space-y-6">
+              <div className="space-y-4 sm:space-y-6 px-1 sm:px-0">
                 {studentDetails && Array.isArray(studentDetails) && (
                   <>
-                    {/* Overall Statistics */}
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+                    {/* Overall Statistics - Mobile Responsive */}
+                    <div className="grid grid-cols-3 gap-2 sm:gap-4 mb-4 sm:mb-6">
                       <Card>
-                        <CardContent className="p-4">
-                          <p className="text-sm text-slate-600">Completed</p>
-                          <p className="text-2xl font-bold text-green-600">
+                        <CardContent className="p-2 sm:p-4">
+                          <p className="text-xs sm:text-sm text-slate-600">Completed</p>
+                          <p className="text-lg sm:text-2xl font-bold text-green-600">
                             {studentDetails.filter((p: any) => p.status === 'completed').length}
                           </p>
                         </CardContent>
                       </Card>
                       <Card>
-                        <CardContent className="p-4">
-                          <p className="text-sm text-slate-600">In Progress</p>
-                          <p className="text-2xl font-bold text-yellow-600">
+                        <CardContent className="p-2 sm:p-4">
+                          <p className="text-xs sm:text-sm text-slate-600">In Progress</p>
+                          <p className="text-lg sm:text-2xl font-bold text-yellow-600">
                             {studentDetails.filter((p: any) => p.status === 'in_progress').length}
                           </p>
                         </CardContent>
                       </Card>
                       <Card>
-                        <CardContent className="p-4">
-                          <p className="text-sm text-slate-600">Not Started</p>
-                          <p className="text-2xl font-bold text-slate-600">
+                        <CardContent className="p-2 sm:p-4">
+                          <p className="text-xs sm:text-sm text-slate-600">Not Started</p>
+                          <p className="text-lg sm:text-2xl font-bold text-slate-600">
                             {studentDetails.filter((p: any) => p.status === 'not_started').length}
                           </p>
                         </CardContent>
                       </Card>
                     </div>
 
-                    {/* Difficulty Level Statistics */}
-                    <Card className="mb-6">
-                      <CardHeader>
-                        <CardTitle className="text-lg">Progress by Difficulty Level</CardTitle>
+                    {/* Difficulty Level Statistics - Mobile Responsive */}
+                    <Card className="mb-4 sm:mb-6">
+                      <CardHeader className="pb-3 sm:pb-4">
+                        <CardTitle className="text-base sm:text-lg">Progress by Difficulty Level</CardTitle>
                       </CardHeader>
-                      <CardContent>
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                      <CardContent className="pt-0">
+                        <div className="grid grid-cols-1 gap-3 sm:gap-4">
                           {(() => {
                             const easyProblems = studentDetails.filter((p: any) => p.difficulty === 'Easy');
                             const mediumProblems = studentDetails.filter((p: any) => p.difficulty === 'Medium');
@@ -929,14 +929,14 @@ export default function AdminDashboard() {
 
                             return difficultyStats.map((stat) => (
                               <Card key={stat.name} className={`border-2 ${stat.bgColor}`}>
-                                <CardContent className="p-4">
+                                <CardContent className="p-3 sm:p-4">
                                   <div className="flex items-center justify-between mb-2">
-                                    <h3 className="font-semibold text-slate-800">{stat.name}</h3>
-                                    <Badge className={stat.color.replace('text-', 'bg-').replace('-600', '-100') + ' ' + stat.color}>
+                                    <h3 className="text-sm sm:text-base font-semibold text-slate-800">{stat.name}</h3>
+                                    <Badge className={`text-xs ${stat.color.replace('text-', 'bg-').replace('-600', '-100')} ${stat.color}`}>
                                       {stat.total > 0 ? Math.round((stat.completed / stat.total) * 100) : 0}%
                                     </Badge>
                                   </div>
-                                  <p className="text-sm text-slate-600 mb-1">
+                                  <p className="text-xs sm:text-sm text-slate-600 mb-2">
                                     {stat.completed} of {stat.total} completed
                                   </p>
                                   <div className="w-full bg-slate-200 rounded-full h-2">
@@ -953,14 +953,14 @@ export default function AdminDashboard() {
                       </CardContent>
                     </Card>
                     
-                    {/* Progress Charts */}
-                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    {/* Progress Charts - Mobile Responsive */}
+                    <div className="grid grid-cols-1 gap-4 sm:gap-6">
                       <Card>
-                        <CardHeader>
-                          <CardTitle className="text-lg">Overall Progress Distribution</CardTitle>
+                        <CardHeader className="pb-3 sm:pb-4">
+                          <CardTitle className="text-base sm:text-lg">Overall Progress Distribution</CardTitle>
                         </CardHeader>
-                        <CardContent>
-                          <div className="h-80">
+                        <CardContent className="pt-0">
+                          <div className="h-64 sm:h-80">
                             <ResponsiveContainer width="100%" height="100%">
                               <PieChart>
                                 <Pie
@@ -979,7 +979,7 @@ export default function AdminDashboard() {
                                   cy="50%"
                                   labelLine={false}
                                   label={({ name, value, percent }) => `${name}: ${value} (${(percent * 100).toFixed(0)}%)`}
-                                  outerRadius={80}
+                                  outerRadius={60}
                                   fill="#8884d8"
                                   dataKey="value"
                                 >
@@ -1008,11 +1008,11 @@ export default function AdminDashboard() {
                       </Card>
 
                       <Card>
-                        <CardHeader>
-                          <CardTitle className="text-lg">Difficulty Level Progress</CardTitle>
+                        <CardHeader className="pb-3 sm:pb-4">
+                          <CardTitle className="text-base sm:text-lg">Difficulty Level Progress</CardTitle>
                         </CardHeader>
-                        <CardContent>
-                          <div className="h-80 flex items-center justify-center">
+                        <CardContent className="pt-0">
+                          <div className="h-64 sm:h-80 flex items-center justify-center">
                             <DifficultyProgressChart problems={studentDetails || []} />
                           </div>
                         </CardContent>
@@ -1020,49 +1020,7 @@ export default function AdminDashboard() {
                     </div>
                   </>
                 )}
-                
-                <div className="border rounded-lg overflow-hidden">
-                  <table className="w-full">
-                    <thead className="bg-slate-50">
-                      <tr>
-                        <th className="px-4 py-2 text-left text-sm font-medium text-slate-600">Problem</th>
-                        <th className="px-4 py-2 text-left text-sm font-medium text-slate-600">Category</th>
-                        <th className="px-4 py-2 text-left text-sm font-medium text-slate-600">Difficulty</th>
-                        <th className="px-4 py-2 text-left text-sm font-medium text-slate-600">Status</th>
-                        <th className="px-4 py-2 text-left text-sm font-medium text-slate-600">Notes</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {(studentDetails || []).map((item: any) => (
-                        <tr key={item.id} className="border-t">
-                          <td className="px-4 py-2 text-sm">{item.title}</td>
-                          <td className="px-4 py-2 text-sm">{item.category}</td>
-                          <td className="px-4 py-2">
-                            <Badge className={
-                              item.difficulty === 'Easy' ? 'bg-green-100 text-green-700' :
-                              item.difficulty === 'Medium' ? 'bg-yellow-100 text-yellow-700' :
-                              'bg-red-100 text-red-700'
-                            }>
-                              {item.difficulty}
-                            </Badge>
-                          </td>
-                          <td className="px-4 py-2">
-                            <Badge className={
-                              item.status === 'completed' ? 'bg-green-100 text-green-700' :
-                              item.status === 'in_progress' ? 'bg-yellow-100 text-yellow-700' :
-                              'bg-slate-100 text-slate-700'
-                            }>
-                              {item.status?.replace('_', ' ') || 'not started'}
-                            </Badge>
-                          </td>
-                          <td className="px-4 py-2 text-sm text-slate-600 max-w-xs truncate">
-                            {item.notes || '-'}
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
+
               </div>
             </DialogContent>
           </Dialog>
