@@ -64,7 +64,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
 
     try {
-      const progress = await storage.getStudentProgressWithProblems(req.params.reg_no);
+      const progress = await storage.getStudentProgressWithAllProblems(req.params.reg_no);
       res.json(progress);
     } catch (error) {
       res.status(500).json({ message: "Failed to fetch progress" });

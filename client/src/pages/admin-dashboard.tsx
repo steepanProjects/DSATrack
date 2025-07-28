@@ -687,10 +687,13 @@ export default function AdminDashboard() {
         {/* Student Details Modal */}
         {selectedStudent && (
           <Dialog open={!!selectedStudent} onOpenChange={() => setSelectedStudent(null)}>
-            <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
+            <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto" aria-describedby="student-progress-description">
               <DialogHeader>
                 <DialogTitle>Student Progress Details</DialogTitle>
               </DialogHeader>
+              <p id="student-progress-description" className="sr-only">
+                Detailed view of student's progress across all DSA problems including completion status and notes
+              </p>
               <div className="space-y-6">
                 {studentDetails && Array.isArray(studentDetails) && (
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-4">

@@ -49,6 +49,7 @@ export interface IStorage {
   // Progress methods
   getStudentProgress(reg_no: string): Promise<StudentProgress[]>;
   getStudentProgressWithProblems(reg_no: string): Promise<(StudentProgress & { problem: Problem })[]>;
+  getStudentProgressWithAllProblems(reg_no: string): Promise<(Problem & { status?: string; notes?: string })[]>;
   updateProgress(reg_no: string, problem_id: number, status: string): Promise<StudentProgress>;
   getProgressStats(reg_no: string): Promise<{
     total: number;
@@ -208,6 +209,30 @@ export class DatabaseStorage implements IStorage {
       .from(student_progress)
       .leftJoin(problems, eq(student_progress.problem_id, problems.id))
       .where(eq(student_progress.reg_no, reg_no));
+  }
+
+  async getStudentProgressWithAllProblems(reg_no: string): Promise<(Problem & { status?: string; notes?: string })[]> {
+    const allProblems = await db.select().from(problems);
+    const progressData = await db
+      .select()
+      .from(student_progress)
+      .where(eq(student_progress.reg_no, reg_no));
+    
+    const notesData = await db
+      .select()
+      .from(student_notes)
+      .where(eq(student_notes.reg_no, reg_no));
+
+    return allProblems.map(problem => {
+      const progress = progressData.find(p => p.problem_id === problem.id);
+      const notes = notesData.find(n => n.problem_id === problem.id);
+      
+      return {
+        ...problem,
+        status: progress?.status || 'not_started',
+        notes: notes?.notes || ''
+      };
+    });
   }
 
   async updateProgress(reg_no: string, problem_id: number, status: string): Promise<StudentProgress> {
