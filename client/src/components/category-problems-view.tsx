@@ -83,7 +83,29 @@ export function CategoryProblemsView({ studentRegNo }: CategoryProblemsViewProps
     }));
   }, [problems, progress, bookmarks]);
 
-  // Group problems by category
+  // Define the proper DSA learning path order
+  const categoryOrder = [
+    "STEP 1: LEARN THE BASICS",
+    "STEP 2: LEARN IMPORTANT SORTING TECHNIQUES", 
+    "STEP 3: SOLVE PROBLEMS ON ARRAYS [Easy -> Medium -> Hard]",
+    "STEP 4: BINARY SEARCH [1D, 2D Arrays, Search Space]",
+    "STEP 5: STRINGS [Basic and Medium]",
+    "STEP 6: LEARN LINKEDLIST [Single LL, Double LL, Medium, Hard Problems]",
+    "STEP 7: RECURSION [PatternWise]",
+    "STEP 8: BIT MANIPULATION [Concepts & Problems]",
+    "STEP 9: STACK AND QUEUES [Learning, Pre-In-Post-fix, Monotonic Stack, Implementation]",
+    "STEP 10: SLIDING WINDOW & TWO POINTER COMBINED PROBLEMS",
+    "STEP 11: HEAPS [Learning, Medium, Hard Problems]",
+    "STEP 12: GREEDY ALGORITHMS [Easy, Medium/Hard]",
+    "STEP 13: BINARY TREES [Traversals, Medium and Hard Problems]",
+    "STEP 14: BINARY SEARCH TREES [Concept and Problems]",
+    "STEP 15: GRAPHS [BFS, DFS, Topo sort, MST]",
+    "STEP 16: DYNAMIC PROGRAMMING [Patterns and Problems]",
+    "STEP 17: TRIES",
+    "STEP 18: STRINGS [Advanced]"
+  ];
+
+  // Group problems by category and sort them
   const problemsByCategory = useMemo(() => {
     const filtered = problemsWithProgress.filter(problem => 
       problem.title.toLowerCase().includes(searchTerm.toLowerCase())
@@ -97,8 +119,28 @@ export function CategoryProblemsView({ studentRegNo }: CategoryProblemsViewProps
       categorized.get(problem.category)!.push(problem);
     });
 
-    // Sort categories alphabetically and return as array
-    return Array.from(categorized.entries()).sort(([a], [b]) => a.localeCompare(b));
+    // Sort problems within each category by their ID (which represents the learning order)
+    categorized.forEach((problems) => {
+      problems.sort((a, b) => a.id - b.id);
+    });
+
+    // Return categories in the proper DSA learning order
+    const orderedCategories: [string, ProblemWithProgress[]][] = [];
+    
+    categoryOrder.forEach(categoryName => {
+      if (categorized.has(categoryName)) {
+        orderedCategories.push([categoryName, categorized.get(categoryName)!]);
+      }
+    });
+
+    // Add any remaining categories that weren't in our predefined order
+    categorized.forEach((problems, categoryName) => {
+      if (!categoryOrder.includes(categoryName)) {
+        orderedCategories.push([categoryName, problems]);
+      }
+    });
+
+    return orderedCategories;
   }, [problemsWithProgress, searchTerm]);
 
   const toggleCategory = (category: string) => {
@@ -159,8 +201,11 @@ export function CategoryProblemsView({ studentRegNo }: CategoryProblemsViewProps
         const stats = getCategoryStats(categoryProblems);
         const isExpanded = expandedCategories.has(category);
 
+        const stepNumber = category.match(/STEP (\d+)/)?.[1] || "";
+        const categoryTitle = category.replace(/STEP \d+: /, "");
+
         return (
-          <Card key={category} className="overflow-hidden">
+          <Card key={category} className="overflow-hidden border-l-4 border-l-blue-500">
             <Collapsible open={isExpanded} onOpenChange={() => toggleCategory(category)}>
               <CollapsibleTrigger asChild>
                 <CardHeader className="cursor-pointer hover:bg-slate-50 transition-colors">
@@ -171,18 +216,31 @@ export function CategoryProblemsView({ studentRegNo }: CategoryProblemsViewProps
                       ) : (
                         <ChevronRight className="h-5 w-5 text-slate-500" />
                       )}
-                      <CardTitle className="text-lg">{category}</CardTitle>
-                      <Badge variant="outline" className="text-sm">
+                      <div className="flex items-center space-x-3">
+                        {stepNumber && (
+                          <div className="bg-blue-500 text-white px-3 py-1 rounded-full text-sm font-bold">
+                            Step {stepNumber}
+                          </div>
+                        )}
+                        <CardTitle className="text-lg">{categoryTitle}</CardTitle>
+                      </div>
+                      <Badge variant="outline" className="text-sm ml-auto">
                         {categoryProblems.length} problems
                       </Badge>
                     </div>
                     <div className="flex items-center space-x-4">
-                      <div className="text-sm text-slate-600">
+                      <div className="text-sm text-slate-600 font-medium">
                         {stats.completed}/{stats.total} completed ({stats.percentage}%)
                       </div>
-                      <div className="w-24 bg-slate-200 rounded-full h-2">
+                      <div className="w-32 bg-slate-200 rounded-full h-3">
                         <div
-                          className="bg-green-500 h-2 rounded-full transition-all duration-300"
+                          className={`h-3 rounded-full transition-all duration-300 ${
+                            stats.percentage === 100 
+                              ? "bg-green-500" 
+                              : stats.percentage > 50 
+                                ? "bg-blue-500" 
+                                : "bg-yellow-500"
+                          }`}
                           style={{ width: `${stats.percentage}%` }}
                         />
                       </div>
@@ -197,19 +255,28 @@ export function CategoryProblemsView({ studentRegNo }: CategoryProblemsViewProps
                     {categoryProblems.map((problem) => (
                       <div
                         key={problem.id}
-                        className="flex items-center justify-between p-4 border rounded-lg hover:bg-slate-50 transition-colors"
+                        className={`flex items-center justify-between p-4 border rounded-lg transition-all duration-200 ${
+                          problem.status === "completed" 
+                            ? "bg-green-50 border-green-200" 
+                            : "hover:bg-slate-50 border-slate-200"
+                        }`}
                       >
                         <div className="flex items-center space-x-4 flex-1">
-                          <Checkbox
-                            checked={problem.status === "completed"}
-                            onCheckedChange={(checked) => 
-                              handleStatusChange(problem.id, checked as boolean)
-                            }
-                            className="h-5 w-5"
-                          />
+                          <div className="flex items-center space-x-3">
+                            <span className="text-sm font-mono text-slate-500 w-8">
+                              #{problem.id}
+                            </span>
+                            <Checkbox
+                              checked={problem.status === "completed"}
+                              onCheckedChange={(checked) => 
+                                handleStatusChange(problem.id, checked as boolean)
+                              }
+                              className="h-5 w-5"
+                            />
+                          </div>
                           <div className="flex-1">
                             <div className="flex items-center space-x-3">
-                              <h4 className={`font-medium ${
+                              <h4 className={`font-medium transition-all ${
                                 problem.status === "completed" 
                                   ? "line-through text-slate-500" 
                                   : "text-slate-900"
