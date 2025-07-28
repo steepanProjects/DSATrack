@@ -187,15 +187,15 @@ export default function AdminDashboard() {
         student.reg_no.toLowerCase().includes(searchTerm.toLowerCase()) ||
         student.department.toLowerCase().includes(searchTerm.toLowerCase());
       
-      const matchesDepartment = departmentFilter === "" || student.department === departmentFilter;
+      const matchesDepartment = departmentFilter === "" || departmentFilter === "all" || student.department === departmentFilter;
       
       const completionPercentage = Math.round((student.completed / student.total) * 100);
-      const matchesCompletion = completionFilter === "" || 
+      const matchesCompletion = completionFilter === "" || completionFilter === "all" || 
         (completionFilter === "high" && completionPercentage >= 70) ||
         (completionFilter === "medium" && completionPercentage >= 30 && completionPercentage < 70) ||
         (completionFilter === "low" && completionPercentage < 30);
       
-      const matchesProgress = progressFilter === "" ||
+      const matchesProgress = progressFilter === "" || progressFilter === "all" ||
         (progressFilter === "active" && (student.completed > 0 || student.in_progress > 0)) ||
         (progressFilter === "inactive" && student.completed === 0 && student.in_progress === 0) ||
         (progressFilter === "completed_high" && completionPercentage >= 90) ||
@@ -588,7 +588,7 @@ export default function AdminDashboard() {
                   <SelectValue placeholder="Filter by Department" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">All Departments</SelectItem>
+                  <SelectItem value="all">All Departments</SelectItem>
                   <SelectItem value="CSE">CSE</SelectItem>
                   <SelectItem value="CSBS">CSBS</SelectItem>
                   <SelectItem value="AIML">AIML</SelectItem>
@@ -601,7 +601,7 @@ export default function AdminDashboard() {
                   <SelectValue placeholder="Filter by Activity" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">All Students</SelectItem>
+                  <SelectItem value="all">All Students</SelectItem>
                   <SelectItem value="active">Active Students</SelectItem>
                   <SelectItem value="inactive">Inactive Students</SelectItem>
                   <SelectItem value="completed_high">High Performers (90%+)</SelectItem>
@@ -614,7 +614,7 @@ export default function AdminDashboard() {
                   <SelectValue placeholder="Filter by Completion" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">All Levels</SelectItem>
+                  <SelectItem value="all">All Levels</SelectItem>
                   <SelectItem value="high">High (70%+)</SelectItem>
                   <SelectItem value="medium">Medium (30-70%)</SelectItem>
                   <SelectItem value="low">Low (&lt;30%)</SelectItem>

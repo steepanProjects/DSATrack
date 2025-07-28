@@ -36,7 +36,7 @@ export function ProblemsTable({ studentRegNo }: ProblemsTableProps) {
     queryKey: ["/api/student", studentRegNo, "progress"],
   });
 
-  const { data: bookmarks } = useQuery({
+  const { data: bookmarks } = useQuery<{ problem_id: number }[]>({
     queryKey: ["/api/student", studentRegNo, "bookmarks"],
   });
 
@@ -65,11 +65,11 @@ export function ProblemsTable({ studentRegNo }: ProblemsTableProps) {
     if (!problems || !progress || !bookmarks) return [];
 
     const progressMap = new Map();
-    progress.forEach(p => {
+    (progress || []).forEach(p => {
       progressMap.set(p.problem_id, p.status);
     });
 
-    const bookmarkSet = new Set(bookmarks.map((b: any) => b.problem_id));
+    const bookmarkSet = new Set((bookmarks || []).map(b => b.problem_id));
 
     return problems.map(problem => ({
       ...problem,
