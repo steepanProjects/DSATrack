@@ -44,8 +44,69 @@ export function CategoryProblemsView({ studentRegNo }: CategoryProblemsViewProps
       const res = await apiRequest("PUT", `/api/student/${studentRegNo}/progress/${problemId}`, { status });
       return res.json();
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/student", studentRegNo] });
+    onMutate: async ({ problemId, status }) => {
+      // Cancel any outgoing refetches (so they don't overwrite our optimistic update)
+      await queryClient.cancelQueries({ queryKey: ["/api/student", studentRegNo, "progress"] });
+      await queryClient.cancelQueries({ queryKey: ["/api/student", studentRegNo, "stats"] });
+
+      // Snapshot the previous values
+      const previousProgress = queryClient.getQueryData(["/api/student", studentRegNo, "progress"]);
+      const previousStats = queryClient.getQueryData(["/api/student", studentRegNo, "stats"]);
+
+      // Optimistically update progress
+      queryClient.setQueryData(["/api/student", studentRegNo, "progress"], (old: any) => {
+        if (!Array.isArray(old)) return [];
+        
+        const existingIndex = old.findIndex((p: any) => p.problem_id === problemId);
+        if (existingIndex >= 0) {
+          // Update existing progress
+          const updated = [...old];
+          updated[existingIndex] = { ...updated[existingIndex], status };
+          return updated;
+        } else if (status !== "not_started") {
+          // Add new progress entry
+          return [...old, { id: Date.now(), reg_no: studentRegNo, problem_id: problemId, status }];
+        }
+        return old;
+      });
+
+      // Optimistically update stats
+      queryClient.setQueryData(["/api/student", studentRegNo, "stats"], (old: any) => {
+        if (!old) return old;
+        
+        const currentProgress = queryClient.getQueryData(["/api/student", studentRegNo, "progress"]) as any[];
+        if (!Array.isArray(currentProgress)) return old;
+        
+        const completed = currentProgress.filter((p: any) => p.status === "completed").length;
+        const inProgress = currentProgress.filter((p: any) => p.status === "in_progress").length;
+        const total = old.total || 0;
+        const notStarted = total - completed - inProgress;
+        
+        return {
+          ...old,
+          completed,
+          in_progress: inProgress,
+          not_started: notStarted
+        };
+      });
+
+      return { previousProgress, previousStats };
+    },
+    onError: (err, variables, context) => {
+      // If the mutation fails, use the context returned from onMutate to roll back
+      if (context?.previousProgress) {
+        queryClient.setQueryData(["/api/student", studentRegNo, "progress"], context.previousProgress);
+      }
+      if (context?.previousStats) {
+        queryClient.setQueryData(["/api/student", studentRegNo, "stats"], context.previousStats);
+      }
+    },
+    onSettled: () => {
+      // Debounced refetch to avoid too many requests
+      setTimeout(() => {
+        queryClient.invalidateQueries({ queryKey: ["/api/student", studentRegNo, "progress"] });
+        queryClient.invalidateQueries({ queryKey: ["/api/student", studentRegNo, "stats"] });
+      }, 500);
     },
   });
 
@@ -54,8 +115,38 @@ export function CategoryProblemsView({ studentRegNo }: CategoryProblemsViewProps
       const res = await apiRequest("POST", `/api/student/${studentRegNo}/bookmarks/${problemId}`);
       return res.json();
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/student", studentRegNo, "bookmarks"] });
+    onMutate: async (problemId) => {
+      // Cancel any outgoing refetches
+      await queryClient.cancelQueries({ queryKey: ["/api/student", studentRegNo, "bookmarks"] });
+
+      // Snapshot the previous value
+      const previousBookmarks = queryClient.getQueryData(["/api/student", studentRegNo, "bookmarks"]);
+
+      // Optimistically update bookmarks
+      queryClient.setQueryData(["/api/student", studentRegNo, "bookmarks"], (old: any) => {
+        if (!Array.isArray(old)) return [];
+        
+        const existingIndex = old.findIndex((b: any) => b.problem_id === problemId);
+        if (existingIndex >= 0) {
+          // Remove bookmark
+          return old.filter((b: any) => b.problem_id !== problemId);
+        } else {
+          // Add bookmark
+          return [...old, { id: Date.now(), reg_no: studentRegNo, problem_id: problemId }];
+        }
+      });
+
+      return { previousBookmarks };
+    },
+    onError: (err, variables, context) => {
+      if (context?.previousBookmarks) {
+        queryClient.setQueryData(["/api/student", studentRegNo, "bookmarks"], context.previousBookmarks);
+      }
+    },
+    onSettled: () => {
+      setTimeout(() => {
+        queryClient.invalidateQueries({ queryKey: ["/api/student", studentRegNo, "bookmarks"] });
+      }, 300);
     },
   });
 
@@ -271,6 +362,7 @@ export function CategoryProblemsView({ studentRegNo }: CategoryProblemsViewProps
                               onCheckedChange={(checked) => 
                                 handleStatusChange(problem.id, checked as boolean)
                               }
+                              disabled={updateProgressMutation.isPending}
                               className="h-5 w-5"
                             />
                           </div>
@@ -293,6 +385,7 @@ export function CategoryProblemsView({ studentRegNo }: CategoryProblemsViewProps
                             variant="ghost"
                             size="sm"
                             onClick={() => toggleBookmarkMutation.mutate(problem.id)}
+                            disabled={toggleBookmarkMutation.isPending}
                             className={problem.isBookmarked ? "text-yellow-600" : "text-slate-400"}
                           >
                             <Bookmark className="h-4 w-4" fill={problem.isBookmarked ? "currentColor" : "none"} />
