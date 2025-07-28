@@ -34,18 +34,10 @@ interface EditStudentDialogProps {
 }
 
 const DEPARTMENTS = [
-  "Computer Science",
-  "Information Technology",
-  "Electronics and Communication",
-  "Electrical Engineering",
-  "Mechanical Engineering",
-  "Civil Engineering",
-  "Chemical Engineering",
-  "Biotechnology",
-  "Mathematics",
-  "Physics",
-  "Chemistry",
-  "Other"
+  "AI&DS",
+  "CSE", 
+  "CSBS",
+  "AI&ML"
 ];
 
 export function EditStudentDialog({ student, open, onOpenChange }: EditStudentDialogProps) {
