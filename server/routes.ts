@@ -6,6 +6,7 @@ import { insertStudentSchema, insertProblemSchema } from "@shared/schema";
 import { scrypt, randomBytes } from "crypto";
 import { promisify } from "util";
 import { seedDatabase } from "./seed";
+import { registerOptimizedRoutes } from "./routes/optimized";
 
 const scryptAsync = promisify(scrypt);
 
@@ -18,6 +19,9 @@ async function hashPassword(password: string) {
 export async function registerRoutes(app: Express): Promise<Server> {
   // Setup authentication routes
   setupAuth(app);
+
+  // Register optimized routes for reduced API calls
+  registerOptimizedRoutes(app);
 
   // Check if we need to seed the database
   app.get("/api/seed-check", async (req, res) => {

@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useAuth } from "@/hooks/use-auth";
-import { useQuery } from "@tanstack/react-query";
+import { useStudentDashboard } from "@/hooks/use-dashboard-data";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -20,21 +20,28 @@ export default function StudentDashboard() {
   const [showSettings, setShowSettings] = useState(false);
   const [showGoalDialog, setShowGoalDialog] = useState(false);
 
+  // Single optimized API call for all dashboard data
+  const { data: dashboardData, isLoading } = useStudentDashboard();
+
   if (!user || user.type !== "student") {
     return null;
   }
 
-  const { data: stats } = useQuery({
-    queryKey: ["/api/student", user.reg_no, "stats"],
-  });
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-slate-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
+          <p className="text-slate-600">Loading dashboard...</p>
+        </div>
+      </div>
+    );
+  }
 
-  const { data: problems } = useQuery<Problem[]>({
-    queryKey: ["/api/problems"],
-  });
-
-  const { data: studentProgress } = useQuery({
-    queryKey: ["/api/student", user.reg_no, "progress"],
-  });
+  // Extract data from optimized response with fallbacks
+  const stats = dashboardData?.stats || { total: 0, completed: 0, in_progress: 0, not_started: 0 };
+  const problems = dashboardData?.problems || [];
+  const studentProgress = dashboardData?.progress || [];
 
   const handleLogout = () => {
     logoutMutation.mutate();
@@ -85,7 +92,7 @@ export default function StudentDashboard() {
               <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between">
                 <div className="mb-2 sm:mb-0">
                   <p className="text-xs sm:text-sm font-medium text-slate-600">Total</p>
-                  <p className="text-xl sm:text-3xl font-bold text-slate-800">{stats?.total || 0}</p>
+                  <p className="text-xl sm:text-3xl font-bold text-slate-800">{stats.total}</p>
                 </div>
                 <div className="bg-primary/10 p-2 sm:p-3 rounded-lg self-end sm:self-auto">
                   <Code className="text-primary h-4 w-4 sm:h-6 sm:w-6" />
@@ -98,7 +105,7 @@ export default function StudentDashboard() {
               <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between">
                 <div className="mb-2 sm:mb-0">
                   <p className="text-xs sm:text-sm font-medium text-slate-600">Completed</p>
-                  <p className="text-xl sm:text-3xl font-bold text-green-600">{stats?.completed || 0}</p>
+                  <p className="text-xl sm:text-3xl font-bold text-green-600">{stats.completed}</p>
                 </div>
                 <div className="bg-green-100 p-2 sm:p-3 rounded-lg self-end sm:self-auto">
                   <CheckCircle className="text-green-600 h-4 w-4 sm:h-6 sm:w-6" />
@@ -111,7 +118,7 @@ export default function StudentDashboard() {
               <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between">
                 <div className="mb-2 sm:mb-0">
                   <p className="text-xs sm:text-sm font-medium text-slate-600">In Progress</p>
-                  <p className="text-xl sm:text-3xl font-bold text-yellow-600">{stats?.in_progress || 0}</p>
+                  <p className="text-xl sm:text-3xl font-bold text-yellow-600">{stats.in_progress}</p>
                 </div>
                 <div className="bg-yellow-100 p-2 sm:p-3 rounded-lg self-end sm:self-auto">
                   <Clock className="text-yellow-600 h-4 w-4 sm:h-6 sm:w-6" />
@@ -124,7 +131,7 @@ export default function StudentDashboard() {
               <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between">
                 <div className="mb-2 sm:mb-0">
                   <p className="text-xs sm:text-sm font-medium text-slate-600">Not Started</p>
-                  <p className="text-xl sm:text-3xl font-bold text-slate-600">{stats?.not_started || 0}</p>
+                  <p className="text-xl sm:text-3xl font-bold text-slate-600">{stats.not_started}</p>
                 </div>
                 <div className="bg-slate-100 p-2 sm:p-3 rounded-lg self-end sm:self-auto">
                   <Circle className="text-slate-600 h-4 w-4 sm:h-6 sm:w-6" />
@@ -147,11 +154,11 @@ export default function StudentDashboard() {
               Set Goal
             </Button>
           </div>
-          <StudentGoals studentRegNo={user.reg_no} />
+          <StudentGoals studentRegNo={user.reg_no || ""} />
           
           {/* Enhanced Goal Dialog */}
           <EnhancedGoalDialog 
-            studentRegNo={user.reg_no}
+            studentRegNo={user.reg_no || ""}
             open={showGoalDialog}
             onOpenChange={setShowGoalDialog}
           />
@@ -172,7 +179,7 @@ export default function StudentDashboard() {
               <CardTitle>Difficulty Distribution</CardTitle>
             </CardHeader>
             <CardContent>
-              <DifficultyDoughnutChart problems={problems || []} />
+              <DifficultyDoughnutChart problems={problems} />
             </CardContent>
           </Card>
           <Card>
@@ -180,7 +187,7 @@ export default function StudentDashboard() {
               <CardTitle>Difficulty Level Progress</CardTitle>
             </CardHeader>
             <CardContent>
-              <DifficultyProgressChart problems={studentProgress || []} />
+              <DifficultyProgressChart problems={studentProgress} />
             </CardContent>
           </Card>
         </div>
@@ -194,7 +201,7 @@ export default function StudentDashboard() {
             </p>
           </CardHeader>
           <CardContent>
-            <CategoryProblemsView studentRegNo={user.reg_no} />
+            <CategoryProblemsView studentRegNo={user.reg_no || ""} />
           </CardContent>
         </Card>
       </div>

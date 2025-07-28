@@ -69,15 +69,18 @@ export default function AdminDashboard() {
 
   const { data: problems } = useQuery<Problem[]>({
     queryKey: ["/api/problems"],
+    staleTime: 15 * 60 * 1000, // Problems rarely change
   });
 
   const { data: realDifficultyProgress } = useQuery<any[]>({
     queryKey: ["/api/admin/analytics/difficulty-progress"],
+    staleTime: 5 * 60 * 1000, // Cache analytics for 5 minutes
   });
 
   const { data: studentDetails } = useQuery<any[]>({
     queryKey: ["/api/student", selectedStudent, "progress"],
     enabled: !!selectedStudent,
+    staleTime: 2 * 60 * 1000, // Cache individual student data for 2 minutes
   });
 
   const addStudentMutation = useMutation({
