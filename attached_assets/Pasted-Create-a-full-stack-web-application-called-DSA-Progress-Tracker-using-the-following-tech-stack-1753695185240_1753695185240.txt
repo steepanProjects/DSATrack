@@ -1,0 +1,63 @@
+Create a full-stack web application called **"DSA Progress Tracker"** using the following tech stack:
+
+### 🧩 Stack
+- **Frontend**: React.js + TailwindCSS
+- **Backend**: Express.js (Node.js)
+- **Database**: PostgreSQL (hosted on Neon or Supabase)
+- **Authentication**: Simple classical login (username/password using bcrypt, no JWT)
+- **Data Storage**: PostgreSQL tables
+
+---
+
+### 🗂 Initial Data Load (from TXT files)
+1. Load student data from a file called `namelist.txt`, formatted as:  
+   `NAME | DEPARTMENT | REG_NO`  
+   ➤ Store into a `students` table. Use default password `12345678` (hashed using bcrypt)
+
+2. Load problem data from a file called `DSA_Learning_Path_Categorized.txt`  
+   ➤ Extract `Problem Title`, `Category`, and `Difficulty`, and insert into a `problems` table
+
+Create a seed script to auto-load both files into the database on first run.
+
+---
+
+### 👤 Student Features
+- Login using Reg No + password
+- View all 455 DSA problems (title, category, difficulty)
+- Update each problem’s status: Not Started / In Progress / Completed
+- View dashboards with:
+  - Pie chart: status split
+  - Doughnut chart: difficulty split
+  - Bar chart: category-wise progress
+- Add notes per problem
+- Bookmark problems
+- Search, filter, and sort problems
+- Change password
+
+---
+
+### 🛡️ Admin Features
+- Login using: username = `admin`, password = `admin@123`
+- View all students and their progress summary
+- View detailed per-student status table
+- Reset student passwords
+- Export student progress as CSV
+- Add/edit/remove students
+
+---
+
+### 📊 Tables in PostgreSQL
+1. `students(reg_no TEXT PRIMARY KEY, name TEXT, department TEXT, password_hash TEXT)`
+2. `admin(username TEXT PRIMARY KEY, password_hash TEXT)`
+3. `problems(id SERIAL PRIMARY KEY, title TEXT, category TEXT, difficulty TEXT)`
+4. `student_progress(reg_no TEXT, problem_id INTEGER, status TEXT)`
+5. `student_notes(reg_no TEXT, problem_id INTEGER, note TEXT)`
+6. `bookmarks(reg_no TEXT, problem_id INTEGER)`
+
+---
+
+### 🎨 UI/UX (React + Tailwind)
+- Simple and clean UI
+- Tables with sorting, filtering, search
+- Pie/Bar/Doughnut charts using Chart.js or Recharts
+- Responsive layout for mobile and desktop
