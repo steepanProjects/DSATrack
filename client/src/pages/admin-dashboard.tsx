@@ -17,6 +17,7 @@ import { apiRequest } from "@/lib/queryClient";
 import { ProgressPieChart } from "@/components/charts/progress-pie-chart";
 import { DifficultyDoughnutChart } from "@/components/charts/difficulty-doughnut-chart";
 import { CategoryBarChart } from "@/components/charts/category-bar-chart";
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from "recharts";
 import type { Student, Problem } from "@shared/schema";
 
 const addStudentSchema = z.object({
@@ -696,32 +697,104 @@ export default function AdminDashboard() {
               </p>
               <div className="space-y-6">
                 {studentDetails && Array.isArray(studentDetails) && (
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                      <Card>
+                        <CardContent className="p-4">
+                          <p className="text-sm text-slate-600">Completed</p>
+                          <p className="text-2xl font-bold text-green-600">
+                            {studentDetails.filter((p: any) => p.status === 'completed').length}
+                          </p>
+                        </CardContent>
+                      </Card>
+                      <Card>
+                        <CardContent className="p-4">
+                          <p className="text-sm text-slate-600">In Progress</p>
+                          <p className="text-2xl font-bold text-yellow-600">
+                            {studentDetails.filter((p: any) => p.status === 'in_progress').length}
+                          </p>
+                        </CardContent>
+                      </Card>
+                      <Card>
+                        <CardContent className="p-4">
+                          <p className="text-sm text-slate-600">Not Started</p>
+                          <p className="text-2xl font-bold text-slate-600">
+                            {studentDetails.filter((p: any) => p.status === 'not_started').length}
+                          </p>
+                        </CardContent>
+                      </Card>
+                    </div>
+                    
+                    {/* Individual Progress Chart */}
                     <Card>
-                      <CardContent className="p-4">
-                        <p className="text-sm text-slate-600">Completed</p>
-                        <p className="text-2xl font-bold text-green-600">
-                          {studentDetails.filter((p: any) => p.status === 'completed').length}
-                        </p>
+                      <CardHeader>
+                        <CardTitle className="text-lg">Progress by Category</CardTitle>
+                      </CardHeader>
+                      <CardContent>
+                        <div className="h-80">
+                          <ResponsiveContainer width="100%" height="100%">
+                            <BarChart
+                              data={(() => {
+                                const categoryStats = studentDetails.reduce((acc: any, problem: any) => {
+                                  if (!acc[problem.category]) {
+                                    acc[problem.category] = { completed: 0, in_progress: 0, not_started: 0, total: 0 };
+                                  }
+                                  acc[problem.category][problem.status]++;
+                                  acc[problem.category].total++;
+                                  return acc;
+                                }, {});
+                                
+                                return Object.entries(categoryStats).map(([category, stats]: [string, any]) => ({
+                                  category: category.length > 20 ? category.substring(0, 20) + '...' : category,
+                                  fullCategory: category,
+                                  completed: stats.completed,
+                                  in_progress: stats.in_progress,
+                                  not_started: stats.not_started,
+                                  total: stats.total,
+                                  completionRate: Math.round((stats.completed / stats.total) * 100)
+                                }));
+                              })()}
+                              margin={{ top: 20, right: 30, left: 20, bottom: 60 }}
+                            >
+                              <CartesianGrid strokeDasharray="3 3" />
+                              <XAxis 
+                                dataKey="category" 
+                                angle={-45}
+                                textAnchor="end"
+                                height={80}
+                                fontSize={12}
+                              />
+                              <YAxis />
+                              <Tooltip 
+                                formatter={(value, name) => [value, name === 'completed' ? 'Completed' : name === 'in_progress' ? 'In Progress' : 'Not Started']}
+                                labelFormatter={(label) => {
+                                  const item = (() => {
+                                    const categoryStats = studentDetails.reduce((acc: any, problem: any) => {
+                                      if (!acc[problem.category]) {
+                                        acc[problem.category] = { completed: 0, in_progress: 0, not_started: 0, total: 0 };
+                                      }
+                                      acc[problem.category][problem.status]++;
+                                      acc[problem.category].total++;
+                                      return acc;
+                                    }, {});
+                                    
+                                    return Object.entries(categoryStats).find(([category]) => 
+                                      (category.length > 20 ? category.substring(0, 20) + '...' : category) === label
+                                    );
+                                  })();
+                                  return item ? item[0] : label;
+                                }}
+                              />
+                              <Legend />
+                              <Bar dataKey="completed" stackId="a" fill="#22c55e" name="Completed" />
+                              <Bar dataKey="in_progress" stackId="a" fill="#eab308" name="In Progress" />
+                              <Bar dataKey="not_started" stackId="a" fill="#64748b" name="Not Started" />
+                            </BarChart>
+                          </ResponsiveContainer>
+                        </div>
                       </CardContent>
                     </Card>
-                    <Card>
-                      <CardContent className="p-4">
-                        <p className="text-sm text-slate-600">In Progress</p>
-                        <p className="text-2xl font-bold text-yellow-600">
-                          {studentDetails.filter((p: any) => p.status === 'in_progress').length}
-                        </p>
-                      </CardContent>
-                    </Card>
-                    <Card>
-                      <CardContent className="p-4">
-                        <p className="text-sm text-slate-600">Not Started</p>
-                        <p className="text-2xl font-bold text-slate-600">
-                          {studentDetails.filter((p: any) => p.status === 'not_started').length}
-                        </p>
-                      </CardContent>
-                    </Card>
-                  </div>
+                  </>
                 )}
                 
                 <div className="border rounded-lg overflow-hidden">
