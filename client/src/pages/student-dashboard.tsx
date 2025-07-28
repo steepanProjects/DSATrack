@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { useAuth } from "@/hooks/use-auth";
 import { useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
@@ -8,10 +9,14 @@ import { ProgressPieChart } from "@/components/charts/progress-pie-chart";
 import { DifficultyDoughnutChart } from "@/components/charts/difficulty-doughnut-chart";
 import { CategoryBarChart } from "@/components/charts/category-bar-chart";
 import { CategoryProblemsView } from "@/components/category-problems-view";
+import { StudentSettings } from "@/components/student-settings";
+import { StudentGoals } from "@/components/student-goals";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import type { Problem } from "@shared/schema";
 
 export default function StudentDashboard() {
   const { user, logoutMutation } = useAuth();
+  const [showSettings, setShowSettings] = useState(false);
 
   if (!user || user.type !== "student") {
     return null;
@@ -42,9 +47,19 @@ export default function StudentDashboard() {
               <Badge className="bg-primary/10 text-primary">{user.department}</Badge>
             </div>
             <div className="flex items-center space-x-4">
-              <Button variant="ghost" size="sm">
-                <Settings className="h-4 w-4" />
-              </Button>
+              <Dialog open={showSettings} onOpenChange={setShowSettings}>
+                <DialogTrigger asChild>
+                  <Button variant="ghost" size="sm">
+                    <Settings className="h-4 w-4" />
+                  </Button>
+                </DialogTrigger>
+                <DialogContent>
+                  <DialogHeader>
+                    <DialogTitle>Student Settings</DialogTitle>
+                  </DialogHeader>
+                  <StudentSettings studentRegNo={user.reg_no} />
+                </DialogContent>
+              </Dialog>
               <Button variant="ghost" size="sm" onClick={handleLogout}>
                 <LogOut className="h-4 w-4" />
               </Button>
@@ -109,6 +124,12 @@ export default function StudentDashboard() {
               </div>
             </CardContent>
           </Card>
+        </div>
+
+        {/* Goals Section */}
+        <div className="mb-8">
+          <h2 className="text-xl font-semibold text-slate-800 mb-4">Learning Goals</h2>
+          <StudentGoals studentRegNo={user.reg_no} />
         </div>
 
         {/* Charts Section */}

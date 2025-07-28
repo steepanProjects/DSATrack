@@ -1,5 +1,5 @@
 import { sql, relations } from "drizzle-orm";
-import { pgTable, text, serial, integer, varchar } from "drizzle-orm/pg-core";
+import { pgTable, text, serial, integer, varchar, timestamp } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
@@ -42,11 +42,20 @@ export const bookmarks = pgTable("bookmarks", {
   problem_id: integer("problem_id").notNull().references(() => problems.id),
 });
 
+export const student_goals = pgTable("student_goals", {
+  id: serial("id").primaryKey(),
+  reg_no: text("reg_no").notNull().references(() => students.reg_no),
+  type: text("type").notNull(), // daily, weekly
+  target: integer("target").notNull(),
+  created_at: timestamp("created_at").defaultNow(),
+});
+
 // Relations
 export const studentsRelations = relations(students, ({ many }) => ({
   progress: many(student_progress),
   notes: many(student_notes),
   bookmarks: many(bookmarks),
+  goals: many(student_goals),
 }));
 
 export const problemsRelations = relations(problems, ({ many }) => ({
@@ -88,6 +97,13 @@ export const bookmarksRelations = relations(bookmarks, ({ one }) => ({
   }),
 }));
 
+export const studentGoalsRelations = relations(student_goals, ({ one }) => ({
+  student: one(students, {
+    fields: [student_goals.reg_no],
+    references: [students.reg_no],
+  }),
+}));
+
 // Insert schemas
 export const insertStudentSchema = createInsertSchema(students).omit({
   password_hash: true,
@@ -117,6 +133,11 @@ export const insertBookmarkSchema = createInsertSchema(bookmarks).omit({
   id: true,
 });
 
+export const insertStudentGoalSchema = createInsertSchema(student_goals).omit({
+  id: true,
+  created_at: true,
+});
+
 // Types
 export type Student = typeof students.$inferSelect;
 export type InsertStudent = z.infer<typeof insertStudentSchema>;
@@ -130,6 +151,8 @@ export type StudentNotes = typeof student_notes.$inferSelect;
 export type InsertStudentNotes = z.infer<typeof insertStudentNotesSchema>;
 export type Bookmark = typeof bookmarks.$inferSelect;
 export type InsertBookmark = z.infer<typeof insertBookmarkSchema>;
+export type StudentGoal = typeof student_goals.$inferSelect;
+export type InsertStudentGoal = z.infer<typeof insertStudentGoalSchema>;
 
 // User type for authentication (union of Student and Admin)
 export type User = (Student & { type: 'student' }) | (Admin & { type: 'admin' });

@@ -339,6 +339,144 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Student-specific routes for password change, goals, and export
+  app.put("/api/student/:reg_no/password", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).json({ message: "Not authenticated" });
+    }
+
+    const user = req.user as any;
+    if (user.type !== 'student' || user.reg_no !== req.params.reg_no) {
+      return res.status(403).json({ message: "Access denied" });
+    }
+
+    try {
+      const { currentPassword, newPassword } = req.body;
+      const isValid = await storage.verifyStudentPassword(req.params.reg_no, currentPassword);
+      
+      if (!isValid) {
+        return res.status(400).json({ message: "Current password is incorrect" });
+      }
+
+      await storage.updateStudentPassword(req.params.reg_no, newPassword);
+      res.json({ message: "Password updated successfully" });
+    } catch (error) {
+      res.status(500).json({ message: "Failed to update password" });
+    }
+  });
+
+  app.post("/api/student/:reg_no/goals", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).json({ message: "Not authenticated" });
+    }
+
+    const user = req.user as any;
+    if (user.type !== 'student' || user.reg_no !== req.params.reg_no) {
+      return res.status(403).json({ message: "Access denied" });
+    }
+
+    try {
+      const { type, target } = req.body;
+      const goal = await storage.setStudentGoal(req.params.reg_no, type, target);
+      res.json(goal);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to set goal" });
+    }
+  });
+
+  app.get("/api/student/:reg_no/goals", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).json({ message: "Not authenticated" });
+    }
+
+    const user = req.user as any;
+    if (user.type !== 'student' || user.reg_no !== req.params.reg_no) {
+      return res.status(403).json({ message: "Access denied" });
+    }
+
+    try {
+      const goals = await storage.getStudentGoals(req.params.reg_no);
+      res.json(goals);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch goals" });
+    }
+  });
+
+  app.get("/api/student/:reg_no/today-progress", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).json({ message: "Not authenticated" });
+    }
+
+    const user = req.user as any;
+    if (user.type !== 'student' || user.reg_no !== req.params.reg_no) {
+      return res.status(403).json({ message: "Access denied" });
+    }
+
+    try {
+      const progress = await storage.getTodayProgress(req.params.reg_no);
+      res.json(progress);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch today's progress" });
+    }
+  });
+
+  app.get("/api/student/:reg_no/week-progress", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).json({ message: "Not authenticated" });
+    }
+
+    const user = req.user as any;
+    if (user.type !== 'student' || user.reg_no !== req.params.reg_no) {
+      return res.status(403).json({ message: "Access denied" });
+    }
+
+    try {
+      const progress = await storage.getWeekProgress(req.params.reg_no);
+      res.json(progress);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch week's progress" });
+    }
+  });
+
+  app.get("/api/student/:reg_no/export-solved", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).json({ message: "Not authenticated" });
+    }
+
+    const user = req.user as any;
+    if (user.type !== 'student' || user.reg_no !== req.params.reg_no) {
+      return res.status(403).json({ message: "Access denied" });
+    }
+
+    try {
+      const solvedProblems = await storage.getSolvedProblems(req.params.reg_no);
+      
+      // Generate CSV
+      const headers = ["Problem ID", "Title", "Category", "Difficulty", "Status", "Date Completed"];
+      const csvRows = [headers.join(",")];
+      
+      solvedProblems.forEach((item: any) => {
+        const row = [
+          item.problem.id,
+          `"${item.problem.title}"`,
+          item.problem.category,
+          item.problem.difficulty,
+          item.status,
+          new Date().toISOString().split('T')[0] // Use current date as placeholder
+        ];
+        csvRows.push(row.join(","));
+      });
+
+      const csvContent = csvRows.join("\n");
+      
+      res.setHeader("Content-Type", "text/csv");
+      res.setHeader("Content-Disposition", `attachment; filename=${req.params.reg_no}_solved_problems.csv`);
+      res.send(csvContent);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to export solved problems" });
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }

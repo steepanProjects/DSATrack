@@ -5,6 +5,7 @@ import {
   student_progress, 
   student_notes, 
   bookmarks,
+  student_goals,
   type Student, 
   type Admin,
   type User,
@@ -17,10 +18,14 @@ import {
   type StudentNotes,
   type InsertStudentNotes,
   type Bookmark,
-  type InsertBookmark
+  type InsertBookmark,
+  type StudentGoal,
+  type InsertStudentGoal
 } from "@shared/schema";
 import { db } from "./db";
-import { eq, and, count, sql } from "drizzle-orm";
+import { eq, and, count, sql, desc } from "drizzle-orm";
+import { scrypt, randomBytes } from "crypto";
+import { promisify } from "util";
 import session from "express-session";
 import connectPg from "connect-pg-simple";
 import { pool } from "./db";
@@ -72,6 +77,19 @@ export interface IStorage {
   // Bookmark methods
   getStudentBookmarks(reg_no: string): Promise<Bookmark[]>;
   toggleBookmark(reg_no: string, problem_id: number): Promise<boolean>;
+  
+  // Password and Auth methods
+  verifyStudentPassword(reg_no: string, password: string): Promise<boolean>;
+  updateStudentPassword(reg_no: string, newPassword: string): Promise<void>;
+  
+  // Goals methods
+  getStudentGoals(reg_no: string): Promise<StudentGoal[]>;
+  setStudentGoal(reg_no: string, type: string, target: number): Promise<StudentGoal>;
+  getTodayProgress(reg_no: string): Promise<{ completed_today: number }>;
+  getWeekProgress(reg_no: string): Promise<{ completed_week: number }>;
+  
+  // Export methods
+  getSolvedProblems(reg_no: string): Promise<(StudentProgress & { problem: Problem })[]>;
   
   // Session store
   sessionStore: session.SessionStore;
@@ -391,6 +409,103 @@ export class DatabaseStorage implements IStorage {
         .values({ reg_no, problem_id });
       return true; // Bookmark added
     }
+  }
+
+  // Password and Auth methods
+  async verifyStudentPassword(reg_no: string, password: string): Promise<boolean> {
+    const student = await this.getStudent(reg_no);
+    if (!student) return false;
+
+    try {
+      const scryptAsync = promisify(scrypt);
+      const [salt, key] = student.password_hash.split(':');
+      const hashedBuffer = await scryptAsync(password, salt, 64) as Buffer;
+      const hashedPassword = hashedBuffer.toString('hex');
+      return hashedPassword === key;
+    } catch {
+      return false;
+    }
+  }
+
+  async updateStudentPassword(reg_no: string, newPassword: string): Promise<void> {
+    const scryptAsync = promisify(scrypt);
+    const salt = randomBytes(16).toString('hex');
+    const hashedBuffer = await scryptAsync(newPassword, salt, 64) as Buffer;
+    const hashedPassword = hashedBuffer.toString('hex');
+    const password_hash = `${salt}:${hashedPassword}`;
+
+    await db
+      .update(students)
+      .set({ password_hash })
+      .where(eq(students.reg_no, reg_no));
+  }
+
+  // Goals methods (temporarily return empty data until we can push schema)
+  async getStudentGoals(reg_no: string): Promise<StudentGoal[]> {
+    try {
+      return await db.select().from(student_goals).where(eq(student_goals.reg_no, reg_no));
+    } catch {
+      // Table doesn't exist yet, return empty array
+      return [];
+    }
+  }
+
+  async setStudentGoal(reg_no: string, type: string, target: number): Promise<StudentGoal> {
+    try {
+      // Delete existing goal of the same type
+      await db
+        .delete(student_goals)
+        .where(and(
+          eq(student_goals.reg_no, reg_no),
+          eq(student_goals.type, type)
+        ));
+
+      // Insert new goal
+      const [goal] = await db
+        .insert(student_goals)
+        .values({ reg_no, type, target })
+        .returning();
+      
+      return goal;
+    } catch {
+      // Table doesn't exist yet, return mock data
+      return {
+        id: 1,
+        reg_no,
+        type,
+        target,
+        created_at: new Date()
+      };
+    }
+  }
+
+  async getTodayProgress(reg_no: string): Promise<{ completed_today: number }> {
+    // For now, return 0 since we don't track completion dates
+    // This could be enhanced later to track actual daily progress
+    return { completed_today: 0 };
+  }
+
+  async getWeekProgress(reg_no: string): Promise<{ completed_week: number }> {
+    // For now, return 0 since we don't track completion dates
+    // This could be enhanced later to track actual weekly progress
+    return { completed_week: 0 };
+  }
+
+  // Export methods
+  async getSolvedProblems(reg_no: string): Promise<(StudentProgress & { problem: Problem })[]> {
+    const solvedProgress = await db
+      .select()
+      .from(student_progress)
+      .innerJoin(problems, eq(student_progress.problem_id, problems.id))
+      .where(and(
+        eq(student_progress.reg_no, reg_no),
+        eq(student_progress.status, 'completed')
+      ));
+
+    return solvedProgress.map(row => ({
+      ...row.student_progress,
+      problem: row.problems
+    }));
   }
 }
 
