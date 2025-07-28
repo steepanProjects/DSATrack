@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { useAuth } from "@/hooks/use-auth";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
@@ -9,6 +9,7 @@ import { Progress } from "@/components/ui/progress";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -38,6 +39,9 @@ export default function AdminDashboard() {
   const { user, logoutMutation } = useAuth();
   const queryClient = useQueryClient();
   const [searchTerm, setSearchTerm] = useState("");
+  const [departmentFilter, setDepartmentFilter] = useState("");
+  const [progressFilter, setProgressFilter] = useState("");
+  const [completionFilter, setCompletionFilter] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
   const [showAddDialog, setShowAddDialog] = useState(false);
   const [selectedStudent, setSelectedStudent] = useState<string | null>(null);
@@ -177,12 +181,34 @@ export default function AdminDashboard() {
   // Filter and paginate students
   const filteredStudents = useMemo(() => {
     if (!students) return [];
-    return students.filter(student =>
-      student.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      student.reg_no.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      student.department.toLowerCase().includes(searchTerm.toLowerCase())
-    );
-  }, [students, searchTerm]);
+    return students.filter(student => {
+      const matchesSearch = searchTerm === "" || 
+        student.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        student.reg_no.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        student.department.toLowerCase().includes(searchTerm.toLowerCase());
+      
+      const matchesDepartment = departmentFilter === "" || student.department === departmentFilter;
+      
+      const completionPercentage = Math.round((student.completed / student.total) * 100);
+      const matchesCompletion = completionFilter === "" || 
+        (completionFilter === "high" && completionPercentage >= 70) ||
+        (completionFilter === "medium" && completionPercentage >= 30 && completionPercentage < 70) ||
+        (completionFilter === "low" && completionPercentage < 30);
+      
+      const matchesProgress = progressFilter === "" ||
+        (progressFilter === "active" && (student.completed > 0 || student.in_progress > 0)) ||
+        (progressFilter === "inactive" && student.completed === 0 && student.in_progress === 0) ||
+        (progressFilter === "completed_high" && completionPercentage >= 90) ||
+        (progressFilter === "in_progress" && student.in_progress > 0);
+      
+      return matchesSearch && matchesDepartment && matchesCompletion && matchesProgress;
+    });
+  }, [students, searchTerm, departmentFilter, progressFilter, completionFilter]);
+
+  // Reset page when filters change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTerm, departmentFilter, progressFilter, completionFilter]);
 
   const paginatedStudents = useMemo(() => {
     const startIndex = (currentPage - 1) * itemsPerPage;
@@ -553,6 +579,73 @@ export default function AdminDashboard() {
                   Export CSV
                 </Button>
               </div>
+            </div>
+            
+            {/* Filter Controls */}
+            <div className="flex flex-col sm:flex-row gap-3 mt-4 px-6 pb-4 border-b border-slate-200">
+              <Select value={departmentFilter} onValueChange={setDepartmentFilter}>
+                <SelectTrigger className="w-full sm:w-48">
+                  <SelectValue placeholder="Filter by Department" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="">All Departments</SelectItem>
+                  <SelectItem value="CSE">CSE</SelectItem>
+                  <SelectItem value="CSBS">CSBS</SelectItem>
+                  <SelectItem value="AIML">AIML</SelectItem>
+                  <SelectItem value="AI&DS">AI&DS</SelectItem>
+                </SelectContent>
+              </Select>
+              
+              <Select value={progressFilter} onValueChange={setProgressFilter}>
+                <SelectTrigger className="w-full sm:w-48">
+                  <SelectValue placeholder="Filter by Activity" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="">All Students</SelectItem>
+                  <SelectItem value="active">Active Students</SelectItem>
+                  <SelectItem value="inactive">Inactive Students</SelectItem>
+                  <SelectItem value="completed_high">High Performers (90%+)</SelectItem>
+                  <SelectItem value="in_progress">Currently Working</SelectItem>
+                </SelectContent>
+              </Select>
+              
+              <Select value={completionFilter} onValueChange={setCompletionFilter}>
+                <SelectTrigger className="w-full sm:w-48">
+                  <SelectValue placeholder="Filter by Completion" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="">All Levels</SelectItem>
+                  <SelectItem value="high">High (70%+)</SelectItem>
+                  <SelectItem value="medium">Medium (30-70%)</SelectItem>
+                  <SelectItem value="low">Low (&lt;30%)</SelectItem>
+                </SelectContent>
+              </Select>
+              
+              {(departmentFilter || progressFilter || completionFilter) && (
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  onClick={() => {
+                    setDepartmentFilter("");
+                    setProgressFilter("");
+                    setCompletionFilter("");
+                    setCurrentPage(1);
+                  }}
+                  className="whitespace-nowrap"
+                >
+                  Clear Filters
+                </Button>
+              )}
+            </div>
+            
+            {/* Results Summary */}
+            <div className="px-6 py-3 bg-slate-50 border-b border-slate-200">
+              <p className="text-sm text-slate-600">
+                Showing {paginatedStudents.length} of {filteredStudents.length} students
+                {(departmentFilter || progressFilter || completionFilter) && 
+                  ` (filtered from ${students?.length || 0} total)`
+                }
+              </p>
             </div>
           </CardHeader>
           <CardContent className="p-0">
