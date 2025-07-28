@@ -1,0 +1,278 @@
+import type { Express } from "express";
+import { createServer, type Server } from "http";
+import { storage } from "./storage";
+import { setupAuth } from "./auth";
+import { insertStudentSchema, insertProblemSchema } from "@shared/schema";
+import { scrypt, randomBytes } from "crypto";
+import { promisify } from "util";
+import { seedDatabase } from "./seed";
+
+const scryptAsync = promisify(scrypt);
+
+async function hashPassword(password: string) {
+  const salt = randomBytes(16).toString("hex");
+  const buf = (await scryptAsync(password, salt, 64)) as Buffer;
+  return `${buf.toString("hex")}.${salt}`;
+}
+
+export async function registerRoutes(app: Express): Promise<Server> {
+  // Setup authentication routes
+  setupAuth(app);
+
+  // Check if we need to seed the database
+  app.get("/api/seed-check", async (req, res) => {
+    try {
+      const problems = await storage.getAllProblems();
+      if (problems.length === 0) {
+        await seedDatabase();
+        res.json({ message: "Database seeded successfully" });
+      } else {
+        res.json({ message: "Database already seeded" });
+      }
+    } catch (error) {
+      console.error("Seeding error:", error);
+      res.status(500).json({ message: "Failed to seed database" });
+    }
+  });
+
+  // Problems routes
+  app.get("/api/problems", async (req, res) => {
+    try {
+      const problems = await storage.getAllProblems();
+      res.json(problems);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch problems" });
+    }
+  });
+
+  app.get("/api/problems/:id", async (req, res) => {
+    try {
+      const problem = await storage.getProblem(parseInt(req.params.id));
+      if (!problem) {
+        return res.status(404).json({ message: "Problem not found" });
+      }
+      res.json(problem);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch problem" });
+    }
+  });
+
+  // Student progress routes
+  app.get("/api/student/:reg_no/progress", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).json({ message: "Not authenticated" });
+    }
+
+    try {
+      const progress = await storage.getStudentProgressWithProblems(req.params.reg_no);
+      res.json(progress);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch progress" });
+    }
+  });
+
+  app.get("/api/student/:reg_no/stats", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).json({ message: "Not authenticated" });
+    }
+
+    try {
+      const stats = await storage.getProgressStats(req.params.reg_no);
+      res.json(stats);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch stats" });
+    }
+  });
+
+  app.put("/api/student/:reg_no/progress/:problem_id", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).json({ message: "Not authenticated" });
+    }
+
+    try {
+      const { status } = req.body;
+      if (!['not_started', 'in_progress', 'completed'].includes(status)) {
+        return res.status(400).json({ message: "Invalid status" });
+      }
+
+      const progress = await storage.updateProgress(
+        req.params.reg_no,
+        parseInt(req.params.problem_id),
+        status
+      );
+      res.json(progress);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to update progress" });
+    }
+  });
+
+  // Notes routes
+  app.get("/api/student/:reg_no/notes/:problem_id", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).json({ message: "Not authenticated" });
+    }
+
+    try {
+      const note = await storage.getStudentNotes(
+        req.params.reg_no,
+        parseInt(req.params.problem_id)
+      );
+      res.json(note || { note: "" });
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch note" });
+    }
+  });
+
+  app.post("/api/student/:reg_no/notes/:problem_id", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).json({ message: "Not authenticated" });
+    }
+
+    try {
+      const { note } = req.body;
+      if (!note || note.trim() === "") {
+        await storage.deleteNote(req.params.reg_no, parseInt(req.params.problem_id));
+        return res.json({ message: "Note deleted" });
+      }
+
+      const savedNote = await storage.saveNote(
+        req.params.reg_no,
+        parseInt(req.params.problem_id),
+        note
+      );
+      res.json(savedNote);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to save note" });
+    }
+  });
+
+  // Bookmarks routes
+  app.get("/api/student/:reg_no/bookmarks", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).json({ message: "Not authenticated" });
+    }
+
+    try {
+      const bookmarks = await storage.getStudentBookmarks(req.params.reg_no);
+      res.json(bookmarks);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch bookmarks" });
+    }
+  });
+
+  app.post("/api/student/:reg_no/bookmarks/:problem_id", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).json({ message: "Not authenticated" });
+    }
+
+    try {
+      const isBookmarked = await storage.toggleBookmark(
+        req.params.reg_no,
+        parseInt(req.params.problem_id)
+      );
+      res.json({ bookmarked: isBookmarked });
+    } catch (error) {
+      res.status(500).json({ message: "Failed to toggle bookmark" });
+    }
+  });
+
+  // Admin routes
+  app.get("/api/admin/students", async (req, res) => {
+    if (!req.isAuthenticated() || (req.user as any)?.type !== 'admin') {
+      return res.status(401).json({ message: "Admin access required" });
+    }
+
+    try {
+      const students = await storage.getAllStudentsProgress();
+      res.json(students);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch students" });
+    }
+  });
+
+  app.post("/api/admin/students", async (req, res) => {
+    if (!req.isAuthenticated() || (req.user as any)?.type !== 'admin') {
+      return res.status(401).json({ message: "Admin access required" });
+    }
+
+    try {
+      const validatedData = insertStudentSchema.parse(req.body);
+      const hashedPassword = await hashPassword(validatedData.password);
+      
+      const student = await storage.createStudent({
+        ...validatedData,
+        password_hash: hashedPassword
+      });
+      res.status(201).json(student);
+    } catch (error) {
+      res.status(400).json({ message: "Failed to create student" });
+    }
+  });
+
+  app.put("/api/admin/students/:reg_no/reset-password", async (req, res) => {
+    if (!req.isAuthenticated() || (req.user as any)?.type !== 'admin') {
+      return res.status(401).json({ message: "Admin access required" });
+    }
+
+    try {
+      const hashedPassword = await hashPassword("12345678");
+      await storage.updateStudent(req.params.reg_no, { password_hash: hashedPassword });
+      res.json({ message: "Password reset successfully" });
+    } catch (error) {
+      res.status(500).json({ message: "Failed to reset password" });
+    }
+  });
+
+  app.delete("/api/admin/students/:reg_no", async (req, res) => {
+    if (!req.isAuthenticated() || (req.user as any)?.type !== 'admin') {
+      return res.status(401).json({ message: "Admin access required" });
+    }
+
+    try {
+      await storage.deleteStudent(req.params.reg_no);
+      res.json({ message: "Student deleted successfully" });
+    } catch (error) {
+      res.status(500).json({ message: "Failed to delete student" });
+    }
+  });
+
+  app.get("/api/admin/export-csv", async (req, res) => {
+    if (!req.isAuthenticated() || (req.user as any)?.type !== 'admin') {
+      return res.status(401).json({ message: "Admin access required" });
+    }
+
+    try {
+      const students = await storage.getAllStudentsProgress();
+      
+      // Generate CSV
+      const headers = ["Name", "Registration", "Department", "Completed", "In Progress", "Not Started", "Total", "Percentage"];
+      const csvRows = [headers.join(",")];
+      
+      students.forEach(student => {
+        const percentage = Math.round((student.completed / student.total) * 100);
+        const row = [
+          `"${student.name}"`,
+          student.reg_no,
+          student.department,
+          student.completed,
+          student.in_progress,
+          student.not_started,
+          student.total,
+          `${percentage}%`
+        ];
+        csvRows.push(row.join(","));
+      });
+
+      const csvContent = csvRows.join("\n");
+      
+      res.setHeader("Content-Type", "text/csv");
+      res.setHeader("Content-Disposition", "attachment; filename=student-progress.csv");
+      res.send(csvContent);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to export CSV" });
+    }
+  });
+
+  const httpServer = createServer(app);
+  return httpServer;
+}
