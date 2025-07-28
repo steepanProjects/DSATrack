@@ -45,7 +45,14 @@ export default function AdminDashboard() {
   const itemsPerPage = 10;
 
   if (!user || user.type !== "admin") {
-    return null;
+    return (
+      <div className="min-h-screen bg-slate-50 flex items-center justify-center">
+        <div className="text-center">
+          <h1 className="text-2xl font-bold text-slate-800 mb-4">Access Denied</h1>
+          <p className="text-slate-600">Admin access required to view this page.</p>
+        </div>
+      </div>
+    );
   }
 
   const { data: students } = useQuery<StudentWithProgress[]>({
@@ -56,7 +63,7 @@ export default function AdminDashboard() {
     queryKey: ["/api/problems"],
   });
 
-  const { data: studentDetails } = useQuery({
+  const { data: studentDetails } = useQuery<any[]>({
     queryKey: ["/api/student", selectedStudent, "progress"],
     enabled: !!selectedStudent,
   });
@@ -685,7 +692,7 @@ export default function AdminDashboard() {
                 <DialogTitle>Student Progress Details</DialogTitle>
               </DialogHeader>
               <div className="space-y-6">
-                {studentDetails && (
+                {studentDetails && Array.isArray(studentDetails) && (
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                     <Card>
                       <CardContent className="p-4">
@@ -726,7 +733,7 @@ export default function AdminDashboard() {
                       </tr>
                     </thead>
                     <tbody>
-                      {studentDetails?.map((item: any) => (
+                      {(studentDetails || []).map((item: any) => (
                         <tr key={item.id} className="border-t">
                           <td className="px-4 py-2 text-sm">{item.title}</td>
                           <td className="px-4 py-2 text-sm">{item.category}</td>
