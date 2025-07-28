@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
@@ -68,6 +68,9 @@ export function NotesModal({ problem, onClose, studentRegNo }: NotesModalProps) 
               <X className="h-4 w-4" />
             </Button>
           </div>
+          <DialogDescription>
+            Add your personal notes and insights for this problem.
+          </DialogDescription>
         </DialogHeader>
         
         <div className="space-y-4">

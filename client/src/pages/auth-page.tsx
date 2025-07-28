@@ -71,15 +71,30 @@ export default function AuthPage() {
   });
 
   const onStudentLogin = async (data: z.infer<typeof studentLoginSchema>) => {
-    await loginMutation.mutateAsync(data);
+    try {
+      await loginMutation.mutateAsync(data);
+    } catch (error) {
+      // Error is already handled by the mutation's onError callback
+      console.error('Login error:', error);
+    }
   };
 
   const onAdminLogin = async (data: z.infer<typeof adminLoginSchema>) => {
-    await loginMutation.mutateAsync(data);
+    try {
+      await loginMutation.mutateAsync(data);
+    } catch (error) {
+      // Error is already handled by the mutation's onError callback
+      console.error('Login error:', error);
+    }
   };
 
   const onStudentRegister = async (data: z.infer<typeof studentRegisterSchema>) => {
-    await registerMutation.mutateAsync(data);
+    try {
+      await registerMutation.mutateAsync(data);
+    } catch (error) {
+      // Error is already handled by the mutation's onError callback
+      console.error('Registration error:', error);
+    }
   };
 
   return (
