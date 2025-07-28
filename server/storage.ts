@@ -6,6 +6,8 @@ import {
   student_notes, 
   bookmarks,
   student_goals,
+  admin_goals,
+  student_admin_goals,
   type Student, 
   type Admin,
   type User,
@@ -20,7 +22,11 @@ import {
   type Bookmark,
   type InsertBookmark,
   type StudentGoal,
-  type InsertStudentGoal
+  type InsertStudentGoal,
+  type AdminGoal,
+  type InsertAdminGoal,
+  type StudentAdminGoal,
+  type InsertStudentAdminGoal
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, and, count, sql, desc } from "drizzle-orm";
@@ -82,11 +88,22 @@ export interface IStorage {
   verifyStudentPassword(reg_no: string, password: string): Promise<boolean>;
   updateStudentPassword(reg_no: string, newPassword: string): Promise<void>;
   
-  // Goals methods
+  // Student Goals methods
   getStudentGoals(reg_no: string): Promise<StudentGoal[]>;
   setStudentGoal(reg_no: string, type: string, target: number): Promise<StudentGoal>;
   getTodayProgress(reg_no: string): Promise<{ completed_today: number }>;
   getWeekProgress(reg_no: string): Promise<{ completed_week: number }>;
+
+  // Admin Goals methods
+  createAdminGoal(goal: InsertAdminGoal): Promise<AdminGoal>;
+  getAdminGoals(): Promise<AdminGoal[]>;
+  updateAdminGoal(id: number, updates: Partial<InsertAdminGoal>): Promise<AdminGoal | null>;
+  deleteAdminGoal(id: number): Promise<boolean>;
+  assignGoalToAllStudents(goalId: number): Promise<void>;
+  assignGoalToStudent(goalId: number, reg_no: string): Promise<StudentAdminGoal>;
+  getStudentAdminGoals(reg_no: string): Promise<(StudentAdminGoal & { adminGoal: AdminGoal })[]>;
+  updateStudentAdminGoalProgress(id: number, progress: number): Promise<StudentAdminGoal | null>;
+  getAdminGoalAnalytics(goalId: number): Promise<any>;
   
   // Export methods
   getSolvedProblems(reg_no: string): Promise<(StudentProgress & { problem: Problem })[]>;
@@ -569,6 +586,131 @@ export class DatabaseStorage implements IStorage {
     // For now, return 0 since we don't track completion dates
     // This could be enhanced later to track actual weekly progress
     return { completed_week: 0 };
+  }
+
+  // Admin Goals methods
+  async createAdminGoal(goal: InsertAdminGoal): Promise<AdminGoal> {
+    const [newGoal] = await db
+      .insert(admin_goals)
+      .values(goal)
+      .returning();
+    return newGoal;
+  }
+
+  async getAdminGoals(): Promise<AdminGoal[]> {
+    return await db.select().from(admin_goals).where(eq(admin_goals.is_active, true));
+  }
+
+  async updateAdminGoal(id: number, updates: Partial<InsertAdminGoal>): Promise<AdminGoal | null> {
+    const [updated] = await db
+      .update(admin_goals)
+      .set(updates)
+      .where(eq(admin_goals.id, id))
+      .returning();
+    return updated || null;
+  }
+
+  async deleteAdminGoal(id: number): Promise<boolean> {
+    const result = await db
+      .update(admin_goals)
+      .set({ is_active: false })
+      .where(eq(admin_goals.id, id));
+    return result.rowCount > 0;
+  }
+
+  async assignGoalToAllStudents(goalId: number): Promise<void> {
+    const allStudents = await db.select({ reg_no: students.reg_no }).from(students);
+    
+    const assignments = allStudents.map(student => ({
+      reg_no: student.reg_no,
+      admin_goal_id: goalId,
+      current_progress: 0,
+      is_completed: false
+    }));
+
+    await db.insert(student_admin_goals).values(assignments);
+  }
+
+  async assignGoalToStudent(goalId: number, reg_no: string): Promise<StudentAdminGoal> {
+    const [assignment] = await db
+      .insert(student_admin_goals)
+      .values({
+        reg_no,
+        admin_goal_id: goalId,
+        current_progress: 0,
+        is_completed: false
+      })
+      .returning();
+    return assignment;
+  }
+
+  async getStudentAdminGoals(reg_no: string): Promise<(StudentAdminGoal & { adminGoal: AdminGoal })[]> {
+    const assignments = await db
+      .select()
+      .from(student_admin_goals)
+      .innerJoin(admin_goals, eq(student_admin_goals.admin_goal_id, admin_goals.id))
+      .where(and(
+        eq(student_admin_goals.reg_no, reg_no),
+        eq(admin_goals.is_active, true)
+      ));
+
+    return assignments.map(row => ({
+      ...row.student_admin_goals,
+      adminGoal: row.admin_goals
+    }));
+  }
+
+  async updateStudentAdminGoalProgress(id: number, progress: number): Promise<StudentAdminGoal | null> {
+    const [updated] = await db
+      .update(student_admin_goals)
+      .set({ 
+        current_progress: progress,
+        is_completed: progress >= 100,
+        completed_at: progress >= 100 ? new Date() : null
+      })
+      .where(eq(student_admin_goals.id, id))
+      .returning();
+    return updated || null;
+  }
+
+  async getAdminGoalAnalytics(goalId: number): Promise<any> {
+    const totalStudents = await db
+      .select({ count: count() })
+      .from(student_admin_goals)
+      .where(eq(student_admin_goals.admin_goal_id, goalId));
+
+    const completedStudents = await db
+      .select({ count: count() })
+      .from(student_admin_goals)
+      .where(and(
+        eq(student_admin_goals.admin_goal_id, goalId),
+        eq(student_admin_goals.is_completed, true)
+      ));
+
+    const averageProgress = await db
+      .select({ avg: sql<number>`AVG(${student_admin_goals.current_progress})` })
+      .from(student_admin_goals)
+      .where(eq(student_admin_goals.admin_goal_id, goalId));
+
+    const progressDistribution = await db
+      .select({
+        reg_no: student_admin_goals.reg_no,
+        student_name: students.name,
+        current_progress: student_admin_goals.current_progress,
+        is_completed: student_admin_goals.is_completed,
+        completed_at: student_admin_goals.completed_at
+      })
+      .from(student_admin_goals)
+      .innerJoin(students, eq(student_admin_goals.reg_no, students.reg_no))
+      .where(eq(student_admin_goals.admin_goal_id, goalId))
+      .orderBy(desc(student_admin_goals.current_progress));
+
+    return {
+      totalStudents: totalStudents[0]?.count || 0,
+      completedStudents: completedStudents[0]?.count || 0,
+      averageProgress: Math.round(averageProgress[0]?.avg || 0),
+      progressDistribution
+    };
   }
 
   // Export methods

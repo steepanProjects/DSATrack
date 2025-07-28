@@ -11,6 +11,7 @@ import { DifficultyProgressChart } from "@/components/charts/difficulty-progress
 import { CategoryProblemsView } from "@/components/category-problems-view";
 import { StudentSettings } from "@/components/student-settings";
 import { StudentGoals } from "@/components/student-goals";
+import { StudentAdminGoals } from "@/components/student-admin-goals";
 import { EnhancedGoalDialog } from "@/components/enhanced-goal-dialog";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import type { Problem } from "@shared/schema";
@@ -43,6 +44,11 @@ export default function StudentDashboard() {
   const problems = dashboardData?.problems || [];
   const studentProgress = dashboardData?.progress || [];
 
+  // Safe data handling for charts
+  const hasValidStats = dashboardData?.stats && typeof dashboardData.stats === 'object';
+  const hasValidProblems = Array.isArray(dashboardData?.problems);
+  const hasValidProgress = Array.isArray(dashboardData?.progress);
+
   const handleLogout = () => {
     logoutMutation.mutate();
   };
@@ -72,7 +78,7 @@ export default function StudentDashboard() {
                   <DialogHeader>
                     <DialogTitle>Student Settings</DialogTitle>
                   </DialogHeader>
-                  <StudentSettings studentRegNo={user.reg_no} />
+                  <StudentSettings studentRegNo={user.reg_no ?? ""} />
                 </DialogContent>
               </Dialog>
               <Button variant="ghost" size="sm" onClick={handleLogout} className="p-2">
@@ -92,7 +98,7 @@ export default function StudentDashboard() {
               <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between">
                 <div className="mb-2 sm:mb-0">
                   <p className="text-xs sm:text-sm font-medium text-slate-600">Total</p>
-                  <p className="text-xl sm:text-3xl font-bold text-slate-800">{stats.total}</p>
+                  <p className="text-xl sm:text-3xl font-bold text-slate-800">{hasValidStats ? stats.total : 0}</p>
                 </div>
                 <div className="bg-primary/10 p-2 sm:p-3 rounded-lg self-end sm:self-auto">
                   <Code className="text-primary h-4 w-4 sm:h-6 sm:w-6" />
@@ -105,7 +111,7 @@ export default function StudentDashboard() {
               <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between">
                 <div className="mb-2 sm:mb-0">
                   <p className="text-xs sm:text-sm font-medium text-slate-600">Completed</p>
-                  <p className="text-xl sm:text-3xl font-bold text-green-600">{stats.completed}</p>
+                  <p className="text-xl sm:text-3xl font-bold text-green-600">{hasValidStats ? stats.completed : 0}</p>
                 </div>
                 <div className="bg-green-100 p-2 sm:p-3 rounded-lg self-end sm:self-auto">
                   <CheckCircle className="text-green-600 h-4 w-4 sm:h-6 sm:w-6" />
@@ -118,7 +124,7 @@ export default function StudentDashboard() {
               <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between">
                 <div className="mb-2 sm:mb-0">
                   <p className="text-xs sm:text-sm font-medium text-slate-600">In Progress</p>
-                  <p className="text-xl sm:text-3xl font-bold text-yellow-600">{stats.in_progress}</p>
+                  <p className="text-xl sm:text-3xl font-bold text-yellow-600">{hasValidStats ? stats.in_progress : 0}</p>
                 </div>
                 <div className="bg-yellow-100 p-2 sm:p-3 rounded-lg self-end sm:self-auto">
                   <Clock className="text-yellow-600 h-4 w-4 sm:h-6 sm:w-6" />
@@ -131,7 +137,7 @@ export default function StudentDashboard() {
               <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between">
                 <div className="mb-2 sm:mb-0">
                   <p className="text-xs sm:text-sm font-medium text-slate-600">Not Started</p>
-                  <p className="text-xl sm:text-3xl font-bold text-slate-600">{stats.not_started}</p>
+                  <p className="text-xl sm:text-3xl font-bold text-slate-600">{hasValidStats ? stats.not_started : 0}</p>
                 </div>
                 <div className="bg-slate-100 p-2 sm:p-3 rounded-lg self-end sm:self-auto">
                   <Circle className="text-slate-600 h-4 w-4 sm:h-6 sm:w-6" />
@@ -141,10 +147,15 @@ export default function StudentDashboard() {
           </Card>
         </div>
 
-        {/* Goals Section - Mobile Responsive */}
+        {/* Admin Goals Section - Mobile Responsive */}
+        <div className="mb-6 sm:mb-8">
+          <StudentAdminGoals studentRegNo={user.reg_no ?? ""} />
+        </div>
+
+        {/* Student Goals Section - Mobile Responsive */}
         <div className="mb-6 sm:mb-8">
           <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center mb-4 gap-3">
-            <h2 className="text-lg sm:text-xl font-semibold text-slate-800">Learning Goals</h2>
+            <h2 className="text-lg sm:text-xl font-semibold text-slate-800">My Learning Goals</h2>
             <Button 
               onClick={() => setShowGoalDialog(true)}
               className="flex items-center gap-2 bg-primary hover:bg-primary/90 w-full sm:w-auto justify-center sm:justify-start text-sm"
@@ -154,11 +165,11 @@ export default function StudentDashboard() {
               Set Goal
             </Button>
           </div>
-          <StudentGoals studentRegNo={user.reg_no || ""} />
+          <StudentGoals studentRegNo={user.reg_no ?? ""} />
           
           {/* Enhanced Goal Dialog */}
           <EnhancedGoalDialog 
-            studentRegNo={user.reg_no || ""}
+            studentRegNo={user.reg_no ?? ""}
             open={showGoalDialog}
             onOpenChange={setShowGoalDialog}
           />
@@ -171,7 +182,11 @@ export default function StudentDashboard() {
               <CardTitle>Progress Overview</CardTitle>
             </CardHeader>
             <CardContent>
-              <ProgressPieChart data={stats} />
+              {hasValidStats ? (
+                <ProgressPieChart data={stats} />
+              ) : (
+                <div className="text-center text-slate-500 py-8">Loading chart...</div>
+              )}
             </CardContent>
           </Card>
           <Card>
@@ -179,7 +194,11 @@ export default function StudentDashboard() {
               <CardTitle>Difficulty Distribution</CardTitle>
             </CardHeader>
             <CardContent>
-              <DifficultyDoughnutChart problems={problems} />
+              {hasValidProblems ? (
+                <DifficultyDoughnutChart problems={problems} />
+              ) : (
+                <div className="text-center text-slate-500 py-8">Loading chart...</div>
+              )}
             </CardContent>
           </Card>
           <Card>
@@ -187,7 +206,11 @@ export default function StudentDashboard() {
               <CardTitle>Difficulty Level Progress</CardTitle>
             </CardHeader>
             <CardContent>
-              <DifficultyProgressChart problems={studentProgress} />
+              {hasValidProgress ? (
+                <DifficultyProgressChart problems={studentProgress} />
+              ) : (
+                <div className="text-center text-slate-500 py-8">Loading chart...</div>
+              )}
             </CardContent>
           </Card>
         </div>
@@ -201,7 +224,7 @@ export default function StudentDashboard() {
             </p>
           </CardHeader>
           <CardContent>
-            <CategoryProblemsView studentRegNo={user.reg_no || ""} />
+            <CategoryProblemsView studentRegNo={user.reg_no ?? ""} />
           </CardContent>
         </Card>
       </div>

@@ -19,6 +19,7 @@ import { ProgressPieChart } from "@/components/charts/progress-pie-chart";
 import { DifficultyDoughnutChart } from "@/components/charts/difficulty-doughnut-chart";
 import { DifficultyProgressChart } from "@/components/charts/difficulty-progress-chart";
 import { EditStudentDialog } from "@/components/edit-student-dialog";
+import { AdminGoalManagement } from "@/components/admin-goal-management";
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend } from "recharts";
 import type { Student, Problem } from "@shared/schema";
 
@@ -352,12 +353,17 @@ export default function AdminDashboard() {
 
         {/* Admin Dashboard Charts and Analytics */}
         <Tabs defaultValue="students" className="w-full mb-8">
-          <TabsList className="grid w-full grid-cols-3">
+          <TabsList className="grid w-full grid-cols-4">
             <TabsTrigger value="students">Students</TabsTrigger>
+            <TabsTrigger value="goals">Goal Management</TabsTrigger>
             <TabsTrigger value="analytics">Analytics</TabsTrigger>
             <TabsTrigger value="upload">Upload Data</TabsTrigger>
           </TabsList>
           
+          <TabsContent value="goals" className="space-y-6">
+            <AdminGoalManagement />
+          </TabsContent>
+
           <TabsContent value="analytics" className="space-y-8">
             {/* Charts Section */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">

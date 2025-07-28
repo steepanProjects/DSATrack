@@ -523,6 +523,94 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Get student admin goals
+  app.get("/api/student/:reg_no/admin-goals", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).json({ message: "Not authenticated" });
+    }
+
+    const user = req.user as any;
+    if (user.type !== 'student' || user.reg_no !== req.params.reg_no) {
+      return res.status(403).json({ message: "Access denied" });
+    }
+
+    try {
+      const adminGoals = await storage.getStudentAdminGoals(req.params.reg_no);
+      res.json(adminGoals);
+    } catch (error) {
+      console.error("Error fetching student admin goals:", error);
+      res.status(500).json({ error: "Failed to fetch admin goals" });
+    }
+  });
+
+  // Admin Goals Routes
+  app.get("/api/admin/goals", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).json({ message: "Not authenticated" });
+    }
+
+    const user = req.user as any;
+    if (user.type !== 'admin') {
+      return res.status(403).json({ message: "Access denied" });
+    }
+
+    try {
+      const goals = await storage.getAdminGoals();
+      res.json(goals);
+    } catch (error) {
+      console.error("Error fetching admin goals:", error);
+      res.status(500).json({ error: "Failed to fetch admin goals" });
+    }
+  });
+
+  app.post("/api/admin/goals", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).json({ message: "Not authenticated" });
+    }
+
+    const user = req.user as any;
+    if (user.type !== 'admin') {
+      return res.status(403).json({ message: "Access denied" });
+    }
+
+    try {
+      const goalData = req.body;
+      const { assign_to_all, ...goalFields } = goalData;
+      
+      const goal = await storage.createAdminGoal(goalFields);
+      
+      // If assign_to_all is true, assign to all students
+      if (assign_to_all) {
+        await storage.assignGoalToAllStudents(goal.id);
+      }
+      
+      res.json(goal);
+    } catch (error) {
+      console.error("Error creating admin goal:", error);
+      res.status(500).json({ error: "Failed to create admin goal" });
+    }
+  });
+
+  app.get("/api/admin/goals/:id/analytics", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).json({ message: "Not authenticated" });
+    }
+
+    const user = req.user as any;
+    if (user.type !== 'admin') {
+      return res.status(403).json({ message: "Access denied" });
+    }
+
+    try {
+      const goalId = parseInt(req.params.id);
+      const analytics = await storage.getAdminGoalAnalytics(goalId);
+      res.json(analytics);
+    } catch (error) {
+      console.error("Error fetching goal analytics:", error);
+      res.status(500).json({ error: "Failed to fetch goal analytics" });
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }
