@@ -116,18 +116,17 @@ export function CategoryProblemsView({ studentRegNo }: CategoryProblemsViewProps
 
   // Immediate UI update function
   const updateProgressInstantly = useCallback((problemId: number, status: string) => {
-    // Immediately update UI cache
+    // Immediately update UI cache - the server returns problems with id field, not problem_id
     queryClient.setQueryData(["/api/student", studentRegNo, "progress"], (old: any) => {
       if (!Array.isArray(old)) return [];
       
-      const existingIndex = old.findIndex((p: any) => p.problem_id === problemId);
+      const existingIndex = old.findIndex((p: any) => p.id === problemId);
       if (existingIndex >= 0) {
         const updated = [...old];
         updated[existingIndex] = { ...updated[existingIndex], status };
         return updated;
-      } else if (status !== "not_started") {
-        return [...old, { id: Date.now(), reg_no: studentRegNo, problem_id: problemId, status }];
       }
+      // If not found, the status will be handled by server refresh
       return old;
     });
 
@@ -168,8 +167,8 @@ export function CategoryProblemsView({ studentRegNo }: CategoryProblemsViewProps
       return pendingUpdate.status;
     }
     
-    // Otherwise get from current progress data
-    const problemProgress = progress?.find((p: any) => p.problem_id === problemId);
+    // Otherwise get from current progress data - server returns problems with id field, not problem_id
+    const problemProgress = progress?.find((p: any) => p.id === problemId);
     return problemProgress?.status || "not_started";
   }, [progress, updateQueue]);
 
