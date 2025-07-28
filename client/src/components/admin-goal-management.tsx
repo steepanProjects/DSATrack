@@ -20,9 +20,9 @@ interface AdminGoalFormData {
   description: string;
   type: string;
   target: number;
-  category?: string;
-  difficulty?: string;
-  deadline?: string;
+  category?: string | null;
+  difficulty?: string | null;
+  deadline?: string | null;
   assign_to_all: boolean;
 }
 
@@ -33,13 +33,23 @@ export function AdminGoalManagement() {
   const [selectedGoalId, setSelectedGoalId] = useState<number | null>(null);
 
   // Fetch admin goals
-  const { data: adminGoals = [], isLoading } = useQuery({
+  const { data: adminGoals = [], isLoading } = useQuery<AdminGoal[]>({
     queryKey: ["/api/admin/goals"],
     staleTime: 5 * 60 * 1000, // 5 minutes
   });
 
   // Fetch analytics for selected goal
-  const { data: analytics } = useQuery({
+  const { data: analytics } = useQuery<{
+    totalStudents: number;
+    completedStudents: number;
+    averageProgress: number;
+    progressDistribution: Array<{
+      student_name: string;
+      reg_no: string;
+      current_progress: number;
+      is_completed: boolean;
+    }>;
+  }>({
     queryKey: ["/api/admin/goals", selectedGoalId, "analytics"],
     enabled: !!selectedGoalId,
     staleTime: 2 * 60 * 1000, // 2 minutes
@@ -84,8 +94,8 @@ export function AdminGoalManagement() {
       const submitData = {
         ...formData,
         deadline: formData.deadline ? new Date(formData.deadline).toISOString() : null,
-        category: formData.category || null,
-        difficulty: formData.difficulty || null,
+        category: formData.category === "any" ? null : formData.category || null,
+        difficulty: formData.difficulty === "any" ? null : formData.difficulty || null,
       };
       
       createGoalMutation.mutate(submitData);
@@ -168,7 +178,7 @@ export function AdminGoalManagement() {
                     <SelectValue placeholder="Any category" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">Any Category</SelectItem>
+                    <SelectItem value="any">Any Category</SelectItem>
                     <SelectItem value="Arrays">Arrays</SelectItem>
                     <SelectItem value="Strings">Strings</SelectItem>
                     <SelectItem value="Linked Lists">Linked Lists</SelectItem>
@@ -188,7 +198,7 @@ export function AdminGoalManagement() {
                     <SelectValue placeholder="Any difficulty" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">Any Difficulty</SelectItem>
+                    <SelectItem value="any">Any Difficulty</SelectItem>
                     <SelectItem value="Easy">Easy</SelectItem>
                     <SelectItem value="Medium">Medium</SelectItem>
                     <SelectItem value="Hard">Hard</SelectItem>
@@ -280,7 +290,7 @@ export function AdminGoalManagement() {
               </Badge>
             )}
 
-            {goalAnalytics && (
+            {goalAnalytics && typeof goalAnalytics === 'object' && 'totalStudents' in goalAnalytics && (
               <div className="mt-4 space-y-3 border-t pt-3">
                 <div className="grid grid-cols-3 gap-4 text-center">
                   <div>
@@ -322,7 +332,7 @@ export function AdminGoalManagement() {
   };
 
   const DetailedAnalytics = () => {
-    if (!selectedGoalId || !analytics) return null;
+    if (!selectedGoalId || !analytics || !Array.isArray(adminGoals)) return null;
 
     const selectedGoal = adminGoals.find((g: AdminGoal) => g.id === selectedGoalId);
     if (!selectedGoal) return null;
