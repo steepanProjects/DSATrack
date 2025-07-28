@@ -160,6 +160,19 @@ export function CategoryProblemsView({ studentRegNo }: CategoryProblemsViewProps
     });
   }, [studentRegNo, queryClient]);
 
+  // Get current status for a problem (with pending updates considered)
+  const getCurrentStatus = useCallback((problemId: number) => {
+    // Check if there's a pending update for this problem
+    const pendingUpdate = updateQueue.find(u => u.problemId === problemId);
+    if (pendingUpdate) {
+      return pendingUpdate.status;
+    }
+    
+    // Otherwise get from current progress data
+    const problemProgress = progress?.find((p: any) => p.problem_id === problemId);
+    return problemProgress?.status || "not_started";
+  }, [progress, updateQueue]);
+
   const toggleBookmarkMutation = useMutation({
     mutationFn: async (problemId: number) => {
       const res = await apiRequest("POST", `/api/student/${studentRegNo}/bookmarks/${problemId}`);
@@ -204,13 +217,6 @@ export function CategoryProblemsView({ studentRegNo }: CategoryProblemsViewProps
   const problemsWithProgress: ProblemWithProgress[] = useMemo(() => {
     if (!problems || !progress || !bookmarks) return [];
 
-    const progressMap = new Map();
-    if (Array.isArray(progress)) {
-      progress.forEach(p => {
-        progressMap.set(p.problem_id, p.status);
-      });
-    }
-
     const bookmarkSet = new Set();
     if (Array.isArray(bookmarks)) {
       bookmarks.forEach((b: any) => bookmarkSet.add(b.problem_id));
@@ -218,11 +224,11 @@ export function CategoryProblemsView({ studentRegNo }: CategoryProblemsViewProps
 
     return problems.map(problem => ({
       ...problem,
-      status: progressMap.get(problem.id) || "not_started",
+      status: getCurrentStatus(problem.id),
       isBookmarked: bookmarkSet.has(problem.id),
       hasNote: false // TODO: Add notes query
     }));
-  }, [problems, progress, bookmarks]);
+  }, [problems, progress, bookmarks, updateQueue, getCurrentStatus]);
 
   // Define the proper DSA learning path order
   const categoryOrder = [
