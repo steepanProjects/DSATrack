@@ -130,9 +130,9 @@ export function AdminGoalManagement() {
             Create Goal for All Students
           </Button>
         </DialogTrigger>
-        <DialogContent className="max-w-md">
+        <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>Create Goal for All Students</DialogTitle>
+            <DialogTitle className="text-lg sm:text-xl">Create Goal for All Students</DialogTitle>
           </DialogHeader>
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
@@ -404,30 +404,30 @@ export function AdminGoalManagement() {
         <CardContent>
           <div className="space-y-6">
             {/* Summary Stats */}
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-              <div className="text-center p-4 bg-blue-50 rounded-lg">
-                <div className="text-2xl font-bold text-blue-600">
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+              <div className="text-center p-3 sm:p-4 bg-blue-50 rounded-lg">
+                <div className="text-lg sm:text-2xl font-bold text-blue-600">
                   {analytics.totalStudents}
                 </div>
-                <div className="text-sm text-blue-700">Total Students</div>
+                <div className="text-xs sm:text-sm text-blue-700">Total Students</div>
               </div>
-              <div className="text-center p-4 bg-green-50 rounded-lg">
-                <div className="text-2xl font-bold text-green-600">
+              <div className="text-center p-3 sm:p-4 bg-green-50 rounded-lg">
+                <div className="text-lg sm:text-2xl font-bold text-green-600">
                   {analytics.completedStudents}
                 </div>
-                <div className="text-sm text-green-700">Completed</div>
+                <div className="text-xs sm:text-sm text-green-700">Completed</div>
               </div>
-              <div className="text-center p-4 bg-orange-50 rounded-lg">
-                <div className="text-2xl font-bold text-orange-600">
+              <div className="text-center p-3 sm:p-4 bg-orange-50 rounded-lg">
+                <div className="text-lg sm:text-2xl font-bold text-orange-600">
                   {analytics.averageProgress}%
                 </div>
-                <div className="text-sm text-orange-700">Average Progress</div>
+                <div className="text-xs sm:text-sm text-orange-700">Average Progress</div>
               </div>
-              <div className="text-center p-4 bg-purple-50 rounded-lg">
-                <div className="text-2xl font-bold text-purple-600">
+              <div className="text-center p-3 sm:p-4 bg-purple-50 rounded-lg">
+                <div className="text-lg sm:text-2xl font-bold text-purple-600">
                   {analytics.totalStudents - analytics.completedStudents}
                 </div>
-                <div className="text-sm text-purple-700">In Progress</div>
+                <div className="text-xs sm:text-sm text-purple-700">In Progress</div>
               </div>
             </div>
 
@@ -439,18 +439,18 @@ export function AdminGoalManagement() {
               </h4>
               <div className="space-y-2 max-h-64 overflow-y-auto">
                 {analytics.progressDistribution?.map((student: any, index: number) => (
-                  <div key={index} className="flex items-center justify-between p-2 bg-slate-50 rounded">
-                    <div className="flex-1">
-                      <div className="font-medium text-sm">{student.student_name}</div>
+                  <div key={index} className="flex flex-col sm:flex-row sm:items-center sm:justify-between p-2 bg-slate-50 rounded gap-2">
+                    <div className="flex-1 min-w-0">
+                      <div className="font-medium text-sm truncate">{student.student_name}</div>
                       <div className="text-xs text-slate-600">{student.reg_no}</div>
                     </div>
-                    <div className="flex items-center gap-3">
-                      <Progress value={student.current_progress} className="w-24 h-2" />
+                    <div className="flex items-center gap-2 sm:gap-3">
+                      <Progress value={student.current_progress} className="flex-1 sm:w-24 h-2" />
                       <div className="text-sm font-medium w-12 text-right">
                         {student.current_progress}%
                       </div>
                       {student.is_completed && (
-                        <Badge variant="default" className="text-xs">
+                        <Badge variant="default" className="text-xs whitespace-nowrap">
                           ✓ Done
                         </Badge>
                       )}
@@ -471,18 +471,18 @@ export function AdminGoalManagement() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h2 className="text-2xl font-bold">Goal Management</h2>
-          <p className="text-slate-600">Set and track goals for all students with one click</p>
+          <h2 className="text-xl sm:text-2xl font-bold">Goal Management</h2>
+          <p className="text-sm sm:text-base text-slate-600">Set and track goals for all students with one click</p>
         </div>
         <CreateGoalDialog />
       </div>
 
       <Tabs defaultValue="goals" className="space-y-4">
-        <TabsList>
-          <TabsTrigger value="goals">Active Goals</TabsTrigger>
-          <TabsTrigger value="analytics">Detailed Analytics</TabsTrigger>
+        <TabsList className="grid w-full grid-cols-2">
+          <TabsTrigger value="goals" className="text-sm">Active Goals</TabsTrigger>
+          <TabsTrigger value="analytics" className="text-sm">Analytics</TabsTrigger>
         </TabsList>
 
         <TabsContent value="goals" className="space-y-4">
@@ -498,7 +498,7 @@ export function AdminGoalManagement() {
               </CardContent>
             </Card>
           ) : (
-            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
               {adminGoals.map((goal: AdminGoal) => (
                 <GoalAnalyticsCard key={goal.id} goal={goal} />
               ))}

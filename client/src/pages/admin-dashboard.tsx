@@ -353,11 +353,11 @@ export default function AdminDashboard() {
 
         {/* Admin Dashboard Charts and Analytics */}
         <Tabs defaultValue="students" className="w-full mb-8">
-          <TabsList className="grid w-full grid-cols-4">
-            <TabsTrigger value="students">Students</TabsTrigger>
-            <TabsTrigger value="goals">Goal Management</TabsTrigger>
-            <TabsTrigger value="analytics">Analytics</TabsTrigger>
-            <TabsTrigger value="upload">Upload Data</TabsTrigger>
+          <TabsList className="grid w-full grid-cols-2 sm:grid-cols-4">
+            <TabsTrigger value="students" className="text-xs sm:text-sm">Students</TabsTrigger>
+            <TabsTrigger value="goals" className="text-xs sm:text-sm">Goals</TabsTrigger>
+            <TabsTrigger value="analytics" className="text-xs sm:text-sm">Analytics</TabsTrigger>
+            <TabsTrigger value="upload" className="text-xs sm:text-sm">Upload</TabsTrigger>
           </TabsList>
           
           <TabsContent value="goals" className="space-y-6">
@@ -644,7 +644,7 @@ export default function AdminDashboard() {
                     </Form>
                   </DialogContent>
                 </Dialog>
-                <Button variant="secondary" onClick={handleExportCSV}>
+                <Button variant="secondary" onClick={handleExportCSV} className="w-full sm:w-auto">
                   <Download className="h-4 w-4 mr-2" />
                   Export CSV
                 </Button>
@@ -719,7 +719,68 @@ export default function AdminDashboard() {
             </div>
           </CardHeader>
           <CardContent className="p-0">
-            <div className="overflow-x-auto">
+            {/* Mobile Card Layout - Visible on small screens */}
+            <div className="block md:hidden">
+              <div className="divide-y divide-slate-200">
+                {paginatedStudents.map((student: StudentWithProgress) => (
+                  <div key={student.reg_no} className="p-4 space-y-3">
+                    <div className="flex items-start justify-between">
+                      <div className="min-w-0 flex-1">
+                        <h3 className="font-medium text-slate-900 truncate">{student.name}</h3>
+                        <p className="text-sm text-slate-600">{student.reg_no}</p>
+                        <Badge variant="secondary" className="text-xs mt-1">
+                          {student.department}
+                        </Badge>
+                      </div>
+                      <div className="ml-3 flex flex-col items-end gap-1">
+                        <div className="text-lg font-bold text-green-600">
+                          {Math.round((student.completed / student.total) * 100)}%
+                        </div>
+                        <div className="text-xs text-slate-500">
+                          {student.completed}/{student.total}
+                        </div>
+                      </div>
+                    </div>
+                    
+                    <div className="flex items-center gap-2 pt-2 border-t border-slate-100">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setSelectedStudent(student.reg_no)}
+                        className="flex-1 text-xs"
+                      >
+                        <BarChart3 className="h-3 w-3 mr-1" />
+                        View
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => {
+                          setEditingStudent(student);
+                          setShowEditDialog(true);
+                        }}
+                        className="flex-1 text-xs"
+                      >
+                        <Edit className="h-3 w-3 mr-1" />
+                        Edit
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => resetPasswordMutation.mutate(student.reg_no)}
+                        className="flex-1 text-xs"
+                      >
+                        <Key className="h-3 w-3 mr-1" />
+                        Reset
+                      </Button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Desktop Table Layout - Hidden on small screens */}
+            <div className="hidden md:block overflow-x-auto">
               <table className="w-full">
                 <thead className="bg-slate-50 border-b border-slate-200">
                   <tr>
@@ -815,21 +876,22 @@ export default function AdminDashboard() {
             </div>
 
             {/* Pagination */}
-            <div className="px-6 py-4 border-t border-slate-200">
-              <div className="flex items-center justify-between">
-                <p className="text-sm text-slate-600">
+            <div className="px-3 sm:px-6 py-4 border-t border-slate-200">
+              <div className="flex flex-col sm:flex-row items-center justify-between gap-3">
+                <p className="text-xs sm:text-sm text-slate-600 text-center sm:text-left">
                   Showing {(currentPage - 1) * itemsPerPage + 1}-{Math.min(currentPage * itemsPerPage, filteredStudents.length)} of {filteredStudents.length} students
                 </p>
-                <div className="flex items-center space-x-2">
+                <div className="flex items-center space-x-1 sm:space-x-2">
                   <Button
                     variant="outline"
                     size="sm"
                     onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
                     disabled={currentPage === 1}
+                    className="text-xs sm:text-sm px-2 sm:px-3"
                   >
                     Previous
                   </Button>
-                  {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                  {Array.from({ length: Math.min(3, totalPages) }, (_, i) => {
                     const page = i + 1;
                     return (
                       <Button
@@ -837,7 +899,7 @@ export default function AdminDashboard() {
                         variant={currentPage === page ? "default" : "outline"}
                         size="sm"
                         onClick={() => setCurrentPage(page)}
-                        className={currentPage === page ? "bg-slate-800 text-white" : ""}
+                        className={`text-xs sm:text-sm px-2 sm:px-3 ${currentPage === page ? "bg-slate-800 text-white" : ""}`}
                       >
                         {page}
                       </Button>
@@ -848,6 +910,7 @@ export default function AdminDashboard() {
                     size="sm"
                     onClick={() => setCurrentPage(Math.min(totalPages, currentPage + 1))}
                     disabled={currentPage === totalPages}
+                    className="text-xs sm:text-sm px-2 sm:px-3"
                   >
                     Next
                   </Button>
