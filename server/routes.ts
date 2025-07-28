@@ -611,6 +611,31 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.delete("/api/admin/goals/:id", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).json({ message: "Not authenticated" });
+    }
+
+    const user = req.user as any;
+    if (user.type !== 'admin') {
+      return res.status(403).json({ message: "Access denied" });
+    }
+
+    try {
+      const goalId = parseInt(req.params.id);
+      const success = await storage.deleteAdminGoal(goalId);
+      
+      if (success) {
+        res.json({ message: "Goal deleted successfully" });
+      } else {
+        res.status(404).json({ error: "Goal not found" });
+      }
+    } catch (error) {
+      console.error("Error deleting admin goal:", error);
+      res.status(500).json({ error: "Failed to delete goal" });
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }

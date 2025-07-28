@@ -607,7 +607,7 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getAdminGoals(): Promise<AdminGoal[]> {
-    return await db.select().from(admin_goals);
+    return await db.select().from(admin_goals).where(eq(admin_goals.is_active, true));
   }
 
   async updateAdminGoal(id: number, updates: Partial<InsertAdminGoal>): Promise<AdminGoal | null> {

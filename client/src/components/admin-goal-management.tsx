@@ -7,10 +7,11 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Plus, Target, Users, TrendingUp, Calendar, AlertCircle } from "lucide-react";
+import { Plus, Target, Users, TrendingUp, Calendar, AlertCircle, Trash2 } from "lucide-react";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import type { AdminGoal } from "@shared/schema";
@@ -71,6 +72,26 @@ export function AdminGoalManagement() {
       toast({
         title: "Error",
         description: "Failed to create goal. Please try again.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  // Delete goal mutation
+  const deleteGoalMutation = useMutation({
+    mutationFn: (goalId: number) => 
+      apiRequest("DELETE", `/api/admin/goals/${goalId}`),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/goals"] });
+      toast({
+        title: "Success",
+        description: "Goal deleted successfully!",
+      });
+    },
+    onError: () => {
+      toast({
+        title: "Error",
+        description: "Failed to delete goal. Please try again.",
         variant: "destructive",
       });
     },
@@ -241,6 +262,10 @@ export function AdminGoalManagement() {
   const GoalAnalyticsCard = ({ goal }: { goal: AdminGoal }) => {
     const goalAnalytics = selectedGoalId === goal.id ? analytics : null;
     
+    const handleDeleteClick = (e: React.MouseEvent) => {
+      e.stopPropagation(); // Prevent card click
+    };
+    
     return (
       <Card className="cursor-pointer hover:bg-slate-50" onClick={() => setSelectedGoalId(goal.id)}>
         <CardHeader className="pb-3">
@@ -249,9 +274,40 @@ export function AdminGoalManagement() {
               <Target className="h-5 w-5 text-primary" />
               {goal.title}
             </CardTitle>
-            <Badge variant="outline" className="text-xs">
-              {goal.type}
-            </Badge>
+            <div className="flex items-center gap-2">
+              <Badge variant="outline" className="text-xs">
+                {goal.type}
+              </Badge>
+              <AlertDialog>
+                <AlertDialogTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-8 w-8 p-0 text-red-500 hover:text-red-700 hover:bg-red-50"
+                    onClick={handleDeleteClick}
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>Delete Goal</AlertDialogTitle>
+                    <AlertDialogDescription>
+                      Are you sure you want to delete "{goal.title}"? This will remove the goal for all students and cannot be undone.
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                    <AlertDialogAction
+                      onClick={() => deleteGoalMutation.mutate(goal.id)}
+                      className="bg-red-600 hover:bg-red-700"
+                    >
+                      Delete Goal
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
+            </div>
           </div>
           {goal.description && (
             <p className="text-sm text-slate-600">{goal.description}</p>
