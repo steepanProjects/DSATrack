@@ -109,17 +109,24 @@ export interface IStorage {
   getSolvedProblems(reg_no: string): Promise<(StudentProgress & { problem: Problem })[]>;
   
   // Session store
-  sessionStore: session.SessionStore;
+  sessionStore: session.Store;
 }
 
 export class DatabaseStorage implements IStorage {
-  sessionStore: session.SessionStore;
+  sessionStore: session.Store;
 
   constructor() {
     this.sessionStore = new PostgresSessionStore({ 
       pool, 
       createTableIfMissing: true 
     });
+  }
+
+  private async hashPassword(password: string): Promise<string> {
+    const scryptAsync = promisify(scrypt);
+    const salt = randomBytes(16).toString('hex');
+    const hashedPassword = await scryptAsync(password, salt, 32) as Buffer;
+    return `${salt}:${hashedPassword.toString('hex')}`;
   }
 
   async getUser(id: string): Promise<User | undefined> {
@@ -151,7 +158,7 @@ export class DatabaseStorage implements IStorage {
           reg_no: user.reg_no,
           name: user.name,
           department: user.department,
-          password_hash: user.password_hash
+          password_hash: await this.hashPassword(user.password)
         })
         .returning();
       return { ...newStudent, type: 'student' as const };
@@ -161,7 +168,7 @@ export class DatabaseStorage implements IStorage {
         .insert(admin)
         .values({
           username: user.username,
-          password_hash: user.password_hash
+          password_hash: await this.hashPassword(user.password)
         })
         .returning();
       return { ...newAdmin, type: 'admin' as const };
@@ -184,7 +191,7 @@ export class DatabaseStorage implements IStorage {
         reg_no: student.reg_no,
         name: student.name,
         department: student.department,
-        password_hash: student.password_hash
+        password_hash: await this.hashPassword(student.password)
       })
       .returning();
     return newStudent;
@@ -251,7 +258,7 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getStudentProgressWithProblems(reg_no: string): Promise<(StudentProgress & { problem: Problem })[]> {
-    return await db
+    const result = await db
       .select({
         id: student_progress.id,
         reg_no: student_progress.reg_no,
@@ -260,8 +267,10 @@ export class DatabaseStorage implements IStorage {
         problem: problems
       })
       .from(student_progress)
-      .leftJoin(problems, eq(student_progress.problem_id, problems.id))
+      .innerJoin(problems, eq(student_progress.problem_id, problems.id))
       .where(eq(student_progress.reg_no, reg_no));
+    
+    return result as (StudentProgress & { problem: Problem })[];
   }
 
   async getStudentProgressWithAllProblems(reg_no: string): Promise<(Problem & { status?: string; notes?: string })[]> {
@@ -283,7 +292,7 @@ export class DatabaseStorage implements IStorage {
       return {
         ...problem,
         status: progress?.status || 'not_started',
-        notes: notes?.notes || ''
+        notes: notes?.note || ''
       };
     });
   }
@@ -615,7 +624,7 @@ export class DatabaseStorage implements IStorage {
       .update(admin_goals)
       .set({ is_active: false })
       .where(eq(admin_goals.id, id));
-    return result.rowCount > 0;
+    return (result.rowCount || 0) > 0;
   }
 
   async assignGoalToAllStudents(goalId: number): Promise<void> {
