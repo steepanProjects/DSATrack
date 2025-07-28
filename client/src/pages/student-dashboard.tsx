@@ -7,7 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Settings, LogOut, Code, CheckCircle, Clock, Circle, Target, Plus } from "lucide-react";
 import { ProgressPieChart } from "@/components/charts/progress-pie-chart";
 import { DifficultyDoughnutChart } from "@/components/charts/difficulty-doughnut-chart";
-import { CategoryBarChart } from "@/components/charts/category-bar-chart";
+import { DifficultyProgressChart } from "@/components/charts/difficulty-progress-chart";
 import { CategoryProblemsView } from "@/components/category-problems-view";
 import { StudentSettings } from "@/components/student-settings";
 import { StudentGoals } from "@/components/student-goals";
@@ -30,6 +30,10 @@ export default function StudentDashboard() {
 
   const { data: problems } = useQuery<Problem[]>({
     queryKey: ["/api/problems"],
+  });
+
+  const { data: studentProgress } = useQuery({
+    queryKey: ["/api/student", user.reg_no, "progress"],
   });
 
   const handleLogout = () => {
@@ -170,10 +174,10 @@ export default function StudentDashboard() {
           </Card>
           <Card>
             <CardHeader>
-              <CardTitle>Category Progress</CardTitle>
+              <CardTitle>Difficulty Level Progress</CardTitle>
             </CardHeader>
             <CardContent>
-              <CategoryBarChart problems={[]} />
+              <DifficultyProgressChart problems={studentProgress || []} />
             </CardContent>
           </Card>
         </div>

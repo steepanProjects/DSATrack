@@ -182,6 +182,24 @@ export class DatabaseStorage implements IStorage {
     return updatedStudent;
   }
 
+  async updateStudentByAdmin(reg_no: string, updateData: { name?: string; department?: string; password?: string }): Promise<Student> {
+    const dataToUpdate: any = {};
+    
+    if (updateData.name) dataToUpdate.name = updateData.name;
+    if (updateData.department) dataToUpdate.department = updateData.department;
+    if (updateData.password) {
+      dataToUpdate.password_hash = await this.hashPassword(updateData.password);
+    }
+    
+    const [updatedStudent] = await db
+      .update(students)
+      .set(dataToUpdate)
+      .where(eq(students.reg_no, reg_no))
+      .returning();
+    
+    return updatedStudent;
+  }
+
   async deleteStudent(reg_no: string): Promise<void> {
     // Delete related records first
     await db.delete(student_progress).where(eq(student_progress.reg_no, reg_no));

@@ -13,11 +13,12 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { Download, LogOut, Search, Users, TrendingUp, Watch, Plus, BarChart3, Key, Trash2, Upload, Trophy } from "lucide-react";
+import { Download, LogOut, Search, Users, TrendingUp, Watch, Plus, BarChart3, Key, Trash2, Upload, Trophy, Edit } from "lucide-react";
 import { apiRequest } from "@/lib/queryClient";
 import { ProgressPieChart } from "@/components/charts/progress-pie-chart";
 import { DifficultyDoughnutChart } from "@/components/charts/difficulty-doughnut-chart";
-import { CategoryBarChart } from "@/components/charts/category-bar-chart";
+import { DifficultyProgressChart } from "@/components/charts/difficulty-progress-chart";
+import { EditStudentDialog } from "@/components/edit-student-dialog";
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend } from "recharts";
 import type { Student, Problem } from "@shared/schema";
 
@@ -44,7 +45,9 @@ export default function AdminDashboard() {
   const [completionFilter, setCompletionFilter] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
   const [showAddDialog, setShowAddDialog] = useState(false);
+  const [showEditDialog, setShowEditDialog] = useState(false);
   const [selectedStudent, setSelectedStudent] = useState<string | null>(null);
+  const [editingStudent, setEditingStudent] = useState<StudentWithProgress | null>(null);
   const [studentCsvFile, setStudentCsvFile] = useState<File | null>(null);
   const [progressCsvFile, setProgressCsvFile] = useState<File | null>(null);
   const itemsPerPage = 10;
@@ -375,10 +378,10 @@ export default function AdminDashboard() {
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               <Card>
                 <CardHeader>
-                  <CardTitle>Category Progress Heatmap</CardTitle>
+                  <CardTitle>Difficulty Level Progress</CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <CategoryBarChart problems={problems || []} />
+                  <DifficultyProgressChart problems={problems || []} />
                 </CardContent>
               </Card>
 
@@ -710,6 +713,17 @@ export default function AdminDashboard() {
                             <Button
                               variant="ghost"
                               size="sm"
+                              title="Edit Student"
+                              onClick={() => {
+                                setEditingStudent(student);
+                                setShowEditDialog(true);
+                              }}
+                            >
+                              <Edit className="h-4 w-4" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="sm"
                               title="Reset Password"
                               onClick={() => resetPasswordMutation.mutate(student.reg_no)}
                             >
@@ -919,6 +933,13 @@ export default function AdminDashboard() {
             </DialogContent>
           </Dialog>
         )}
+
+        {/* Edit Student Dialog */}
+        <EditStudentDialog
+          student={editingStudent}
+          open={showEditDialog}
+          onOpenChange={setShowEditDialog}
+        />
       </div>
     </div>
   );

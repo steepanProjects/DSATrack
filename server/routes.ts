@@ -223,6 +223,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.put("/api/admin/students/:reg_no", async (req, res) => {
+    if (!req.isAuthenticated() || (req.user as any)?.type !== 'admin') {
+      return res.status(401).json({ message: "Admin access required" });
+    }
+
+    try {
+      const { name, department, password } = req.body;
+      const updateData: any = { name, department };
+      
+      if (password && password.length >= 8) {
+        updateData.password = password;
+      }
+      
+      const updatedStudent = await storage.updateStudentByAdmin(req.params.reg_no, updateData);
+      res.json(updatedStudent);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to update student" });
+    }
+  });
+
   app.delete("/api/admin/students/:reg_no", async (req, res) => {
     if (!req.isAuthenticated() || (req.user as any)?.type !== 'admin') {
       return res.status(401).json({ message: "Admin access required" });
